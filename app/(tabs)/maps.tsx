@@ -205,6 +205,7 @@ export default function MapsScreen() {
           ref={mapRef}
           provider={PROVIDER_GOOGLE}
           style={styles.map}
+          userInterfaceStyle="dark"
           initialRegion={{
             latitude: 37.78,
             longitude: -122.45,

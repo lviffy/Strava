@@ -1,11 +1,12 @@
 import React from 'react';
-import { Tabs } from 'expo-router';
-import { View, StyleSheet, Platform } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
+import { View, Text, StyleSheet, Platform, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '../../components/useColorScheme';
-import theme, { radii, borders, shadows } from '../../constants/theme';
+import theme, { radii, borders, shadows, spacing, typography } from '../../constants/theme';
 
 export default function TabLayout() {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'dark';
   const colors = theme.theme[colorScheme];
 
@@ -45,13 +46,55 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          headerTitle: 'Strava',
-          headerTitleStyle: {
-            color: colors.accent,
-            fontWeight: '900',
-            fontSize: 20,
-            letterSpacing: -0.5,
-          },
+          headerTitle: () => (
+            <TouchableOpacity
+              style={[styles.upgradeHeaderBtn, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}
+              onPress={() => Alert.alert('Strava Subscription', 'Athlete Intelligence, 3D Flyover, and Race Predictions are unlocked.')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="flame" size={13} color={colors.accent} style={{ marginRight: 4 }} />
+              <Text style={[styles.upgradeHeaderText, { color: colors.textPrimary }]}>Upgrade</Text>
+            </TouchableOpacity>
+          ),
+          headerLeft: () => (
+            <View style={styles.headerGroup}>
+              <TouchableOpacity
+                style={[styles.headerCircleBtn, { backgroundColor: colors.surfaceSecondary }]}
+                onPress={() => router.push('/(tabs)/record')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="add" size={18} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.headerCircleBtn, { backgroundColor: colors.surfaceSecondary }]}
+                onPress={() => router.push('/(tabs)/maps')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="search" size={15} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+          ),
+          headerRight: () => (
+            <View style={styles.headerGroup}>
+              <TouchableOpacity
+                style={[styles.headerCircleBtn, { backgroundColor: colors.surfaceSecondary }]}
+                onPress={() => Alert.alert('Messages', 'Direct messaging and club chats.')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.textPrimary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.headerCircleBtn, { backgroundColor: colors.surfaceSecondary }]}
+                onPress={() => Alert.alert('Notifications', 'You have 3 new notifications.')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="notifications-outline" size={16} color={colors.textPrimary} />
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>3</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          ),
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color as string} />
           ),
@@ -94,7 +137,7 @@ export default function TabLayout() {
         name="you"
         options={{
           title: 'You',
-          headerTitle: 'Profile & Progress',
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color as string} />
           ),
@@ -115,4 +158,48 @@ const styles = StyleSheet.create({
     marginTop: -14,
     ...shadows.none,
   },
+  upgradeHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radii.full,
+    borderWidth: borders.thin,
+  },
+  upgradeHeaderText: {
+    ...typography.caption,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  headerGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: spacing.sm,
+  },
+  headerCircleBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 4,
+    position: 'relative',
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notifBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
 });
+

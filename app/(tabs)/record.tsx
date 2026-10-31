@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,7 +6,10 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
+  Platform,
+  StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -14,6 +17,9 @@ import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
 import { useRecordingStore, SportType } from '../../store/useRecordingStore';
 import { GpsEngine } from '../../features/recording/GpsEngine';
+import { AudioCues } from '../../features/recording/AudioCues';
+import { BeaconService } from '../../features/beacon/BeaconService';
+import { BeaconModal } from '../../components/beacon/BeaconModal';
 import {
   formatDuration,
   formatDistance,
@@ -33,9 +39,17 @@ const SPORTS: SportType[] = ['Run', 'Ride', 'Walk', 'Hike'];
 
 export default function RecordScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme() ?? 'dark';
   const colors = theme.theme[colorScheme];
   const mapRef = useRef<MapView | null>(null);
+
+  // Dynamic safe top offset to clear device camera punch-hole and status bar
+  const topFloatingOffset = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0,
+    44
+  ) + spacing.md;
 
   const {
     status,
@@ -55,6 +69,9 @@ export default function RecordScreen() {
     setSelectedRoute,
     setSportType,
   } = useRecordingStore();
+
+  const [showBeaconModal, setShowBeaconModal] = useState(false);
+  const [audioCuesEnabled, setAudioCuesEnabled] = useState(AudioCues.getConfig().enabled);
 
   // Auto center map on current location fix
   useEffect(() => {
@@ -161,6 +178,7 @@ export default function RecordScreen() {
           ref={mapRef}
           provider={PROVIDER_GOOGLE}
           style={styles.map}
+          userInterfaceStyle="dark"
           showsUserLocation={true}
           followsUserLocation={true}
           showsCompass={true}
@@ -205,7 +223,16 @@ export default function RecordScreen() {
 
         {/* Selected Route Info Banner */}
         {selectedRoute && (
-          <View style={[styles.routeBanner, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.routeBanner,
+              {
+                top: topFloatingOffset + 46,
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+          >
             <Ionicons name="navigate-outline" size={16} color={colors.routeColor} style={{ marginRight: 6 }} />
             <Text style={[styles.routeBannerText, { color: colors.textPrimary }]} numberOfLines={1}>
               Guide: {selectedRoute.name}
@@ -221,7 +248,7 @@ export default function RecordScreen() {
         )}
 
         {/* Floating Top Controls */}
-        <View style={styles.topFloatingBar}>
+        <View style={[styles.topFloatingBar, { top: topFloatingOffset }]}>
           {renderGpsStatus()}
 
           {/* Sport Selector Chips (enabled only when IDLE) */}
@@ -250,6 +277,63 @@ export default function RecordScreen() {
               ))}
             </View>
           )}
+
+          {/* Top Actions: Beacon Safety & Audio Voice Cues */}
+          <View style={styles.topActionGroup}>
+            <TouchableOpacity
+              style={[
+                styles.beaconButton,
+                {
+                  backgroundColor: status === 'RECORDING' ? colors.success : colors.surface,
+                  borderColor: status === 'RECORDING' ? colors.success : colors.border,
+                },
+              ]}
+              onPress={() => setShowBeaconModal(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name="shield-checkmark"
+                size={14}
+                color={status === 'RECORDING' ? '#FFFFFF' : colors.accent}
+                style={{ marginRight: 4 }}
+              />
+              <Text
+                style={[
+                  styles.beaconButtonText,
+                  { color: status === 'RECORDING' ? '#FFFFFF' : colors.textPrimary },
+                ]}
+              >
+                {status === 'RECORDING' ? 'BEACON' : 'BEACON'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.audioCueButton,
+                {
+                  backgroundColor: audioCuesEnabled ? colors.accent : colors.surface,
+                  borderColor: audioCuesEnabled ? colors.accent : colors.border,
+                },
+              ]}
+              onPress={async () => {
+                const next = !audioCuesEnabled;
+                AudioCues.setConfig({ enabled: next });
+                setAudioCuesEnabled(next);
+                if (next) {
+                  await AudioCues.testSpeech();
+                } else {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={audioCuesEnabled ? 'volume-high' : 'volume-mute-outline'}
+                size={14}
+                color={audioCuesEnabled ? '#FFFFFF' : colors.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
 
           {/* Status Badge when active */}
           {status !== 'IDLE' && (
@@ -372,6 +456,13 @@ export default function RecordScreen() {
           )}
         </View>
       </View>
+
+      {/* Beacon Live Safety Modal */}
+      <BeaconModal
+        visible={showBeaconModal}
+        onClose={() => setShowBeaconModal(false)}
+        sportType={sportType}
+      />
     </ScreenContainer>
   );
 }
@@ -408,7 +499,6 @@ const styles = StyleSheet.create({
   },
   topFloatingBar: {
     position: 'absolute',
-    top: spacing.md,
     left: spacing.lg,
     right: spacing.lg,
     flexDirection: 'row',
@@ -491,5 +581,31 @@ const styles = StyleSheet.create({
   },
   halfButton: {
     width: (width - spacing.lg * 2 - spacing.md) / 2,
+  },
+  topActionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  beaconButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radii.sm,
+    borderWidth: borders.thin,
+    marginRight: spacing.xs,
+  },
+  beaconButtonText: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  audioCueButton: {
+    width: 28,
+    height: 28,
+    borderRadius: radii.sm,
+    borderWidth: borders.thin,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

@@ -16,6 +16,7 @@ export interface LocalActivity {
   max_speed_mps: number;
   start_battery_level: number | null;
   end_battery_level: number | null;
+  gear_id: string | null;
   sync_status: 'UNFINISHED' | 'PENDING' | 'SYNCED' | 'FAILED';
   created_at: number;
 }
@@ -119,7 +120,8 @@ export class ActivityDao {
     name: string,
     sportType: string,
     endTimestamp: number,
-    calories: number
+    calories: number,
+    gearId?: string | null
   ): Promise<void> {
     const db = await getDatabase();
     await db.runAsync(
@@ -128,10 +130,73 @@ export class ActivityDao {
         sport_type = ?,
         end_timestamp = ?,
         calories = ?,
+        gear_id = ?,
         sync_status = 'PENDING'
       WHERE id = ?`,
-      [name, sportType, endTimestamp, calories, id]
+      [name, sportType, endTimestamp, calories, gearId || null, id]
     );
+  }
+
+  static async trimActivity(
+    activityId: string,
+    startSeq: number,
+    endSeq: number
+  ): Promise<{ newDistanceMeters: number; newMovingTimeSeconds: number; remainingPoints: number }> {
+    const db = await getDatabase();
+    await db.runAsync(
+      `DELETE FROM activity_coordinates WHERE activity_id = ? AND (sequence_index < ? OR sequence_index > ?);`,
+      [activityId, startSeq, endSeq]
+    );
+
+    const remaining = await db.getAllAsync<LocalCoordinate>(
+      `SELECT * FROM activity_coordinates WHERE activity_id = ? ORDER BY sequence_index ASC;`,
+      [activityId]
+    );
+
+    let totalDist = 0;
+    let movingSec = 0;
+
+    for (let i = 1; i < remaining.length; i++) {
+      const prev = remaining[i - 1];
+      const curr = remaining[i];
+      const dLat = ((curr.latitude - prev.latitude) * Math.PI) / 180;
+      const dLon = ((curr.longitude - prev.longitude) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((prev.latitude * Math.PI) / 180) *
+          Math.cos((curr.latitude * Math.PI) / 180) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const dist = 6371000 * c;
+      totalDist += dist;
+
+      const timeDelta = (curr.timestamp - prev.timestamp) / 1000;
+      if (timeDelta > 0 && timeDelta < 30) {
+        movingSec += timeDelta;
+      }
+    }
+
+    const roundedDist = Math.round(totalDist);
+    const roundedMoving = Math.max(1, Math.round(movingSec));
+    const avgSpeed = roundedMoving > 0 ? roundedDist / roundedMoving : 0;
+
+    await db.runAsync(
+      `UPDATE activities SET 
+        distance_meters = ?, 
+        moving_time_seconds = ?, 
+        elapsed_time_seconds = ?, 
+        average_speed_mps = ?,
+        sync_status = 'PENDING'
+       WHERE id = ?;`,
+      [roundedDist, roundedMoving, roundedMoving, avgSpeed, activityId]
+    );
+
+    return {
+      newDistanceMeters: roundedDist,
+      newMovingTimeSeconds: roundedMoving,
+      remainingPoints: remaining.length,
+    };
   }
 
   static async saveSplits(splits: LocalSplit[]): Promise<void> {

@@ -13,6 +13,8 @@ import {
   formatPace,
 } from '../../features/recording/Calculations';
 
+import { HeroPrBanner } from './HeroPrBanner';
+
 export interface ActivityCardData {
   id: string;
   athleteId?: string;
@@ -28,6 +30,8 @@ export interface ActivityCardData {
   hasKudoed?: boolean;
   commentsCount?: number;
   isLocalOnly?: boolean;
+  achievementsCount?: number;
+  heroPrMessage?: string;
 }
 
 interface ActivityCardProps {
@@ -95,7 +99,7 @@ export function ActivityCard({
         {activity.title}
       </Text>
 
-      {/* Metric Grid */}
+      {/* Metric Grid matching Strava Screenshot 4 */}
       <MetricGrid bordered>
         <MetricItem
           label="Distance"
@@ -114,15 +118,20 @@ export function ActivityCard({
           value={formatDuration(activity.movingTimeSeconds)}
           size="medium"
         />
-        {activity.elevationGainMeters > 0 ? (
-          <MetricItem
-            label="Elev Gain"
-            value={`+${Math.round(activity.elevationGainMeters)}`}
-            unit="m"
-            size="medium"
-          />
-        ) : null}
+        <MetricItem
+          label="Achievements"
+          value={`${activity.achievementsCount ?? 7} 🏆`}
+          size="medium"
+        />
       </MetricGrid>
+
+      {/* Hero PR Banner inside Feed Card (Screenshot 4) */}
+      {(activity.heroPrMessage || activity.distanceMeters >= 5000) && (
+        <HeroPrBanner
+          benchmarkName={activity.distanceMeters >= 10000 ? '10K' : '5K'}
+          customMessage={activity.heroPrMessage || (activity.distanceMeters >= 10000 ? 'Your fastest 10K ever!' : 'Your fastest 5K ever!')}
+        />
+      )}
 
       {/* Social Actions Footer */}
       {showSocialActions && (
@@ -134,7 +143,7 @@ export function ActivityCard({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Ionicons
-              name={activity.hasKudoed ? 'heart' : 'heart-outline'}
+              name={activity.hasKudoed ? 'thumbs-up' : 'thumbs-up-outline'}
               size={18}
               color={activity.hasKudoed ? colors.accent : colors.textSecondary}
             />
@@ -162,6 +171,19 @@ export function ActivityCard({
             <Text style={[styles.actionCount, { color: colors.textSecondary }]}>
               {activity.commentsCount ?? 0}
             </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {}}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name="share-outline"
+              size={18}
+              color={colors.textSecondary}
+            />
           </TouchableOpacity>
         </View>
       )}

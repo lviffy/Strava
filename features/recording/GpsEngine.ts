@@ -1,11 +1,12 @@
 import * as Location from 'expo-location';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
-import * as Speech from 'expo-speech';
 import { useRecordingStore } from '../../store/useRecordingStore';
 import { GpsPointFilter, PaceSmoother, LocationPoint } from './GpsPointFilter';
 import { ActivityDao } from '../../database/ActivityDao';
 import { formatPace, formatDistance } from './Calculations';
+import { AudioCues } from './AudioCues';
+import { BeaconService } from '../beacon/BeaconService';
 
 class GpsEngineService {
   private locationSubscription: Location.LocationSubscription | null = null;
@@ -58,13 +59,16 @@ class GpsEngineService {
     // 5. Update Zustand Store
     useRecordingStore.getState().startSession(activityId);
 
-    // 6. Start 1-second interval timer for elapsed & moving duration
+    // 6. Start Live Beacon Safety Session
+    await BeaconService.startSession(activityId);
+
+    // 7. Start 1-second interval timer for elapsed & moving duration
     if (this.timerInterval) clearInterval(this.timerInterval);
     this.timerInterval = setInterval(() => {
       useRecordingStore.getState().incrementTimers();
     }, 1000);
 
-    // 7. Subscribe to high-accuracy GPS fixes
+    // 8. Subscribe to high-accuracy GPS fixes
     await this.startLocationWatch();
   }
 
@@ -193,19 +197,12 @@ class GpsEngineService {
       const splitNumber = Math.floor(nextSplitTarget / 1000);
       this.lastSplitDistance = currentDistanceMeters;
 
-      // Audio Announcement via TTS
-      try {
-        const pace = formatPace(useRecordingStore.getState().currentPaceSecKm);
-        Speech.speak(`Kilometer ${splitNumber}. Pace ${pace}.`, {
-          language: 'en-US',
-          rate: 1.0,
-        });
-      } catch {}
-
-      // Haptic confirmation
-      try {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } catch {}
+      // Audio Announcement via AudioCues Voice Engine
+      await AudioCues.announceSplit(
+        splitNumber,
+        useRecordingStore.getState().currentPaceSecKm ?? 0,
+        movingTimeSeconds
+      );
     }
   }
 
@@ -229,7 +226,10 @@ class GpsEngineService {
       await deactivateKeepAwake('active_workout_session');
     } catch {}
 
-    // 2. Clear timers and listeners
+    // 2. Stop Beacon live safety session
+    BeaconService.stopSession();
+
+    // 3. Clear timers and listeners
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;

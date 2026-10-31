@@ -5,11 +5,16 @@ import {
   Text,
   ScrollView,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ActivityDao, LocalActivity } from '../../database/ActivityDao';
+import { GearDao, GearItem } from '../../database/GearDao';
+import { AddGearModal } from '../../components/gear/AddGearModal';
+import { BeaconModal } from '../../components/beacon/BeaconModal';
+import { PrivacyZoneModal } from '../../components/privacy/PrivacyZoneModal';
 import { useRecordingStore } from '../../store/useRecordingStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { SyncManager } from '../../services/SyncManager';
@@ -42,15 +47,21 @@ export default function YouProfileScreen() {
   const [unfinishedWorkout, setUnfinishedWorkout] = useState<LocalActivity | null>(null);
   const [pendingSyncCount, setPendingSyncCount] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [gearList, setGearList] = useState<GearItem[]>([]);
+  const [showAddGearModal, setShowAddGearModal] = useState(false);
+  const [showBeaconModal, setShowBeaconModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   const loadProfileData = useCallback(async () => {
     try {
       const activities = await ActivityDao.getAllSavedActivities();
       const unfinished = await ActivityDao.getUnfinishedActivity();
       const pending = await ActivityDao.getPendingActivities();
+      const gears = await GearDao.getAllGear();
       setSavedActivities(activities);
       setUnfinishedWorkout(unfinished);
       setPendingSyncCount(pending.length);
+      setGearList(gears);
     } catch (err) {
       console.error('Failed to load profile data:', err);
     }
@@ -319,6 +330,107 @@ export default function YouProfileScreen() {
           </View>
         </SurfaceCard>
 
+        {/* Athlete Gear & Equipment Section */}
+        <SurfaceCard style={styles.gearCardSection}>
+          <View style={styles.gearHeaderRow}>
+            <SectionHeader title="MY GEAR & SHOES" />
+            <TouchableOpacity
+              onPress={() => setShowAddGearModal(true)}
+              style={styles.addGearBtn}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
+              <Text style={[styles.addGearText, { color: colors.accent }]}>Add Gear</Text>
+            </TouchableOpacity>
+          </View>
+
+          {gearList.length === 0 ? (
+            <Text style={[styles.gearEmptyText, { color: colors.textMuted }]}>
+              No gear added yet. Track mileage on your running shoes and bikes to stay on top of wear.
+            </Text>
+          ) : (
+            gearList.map((g) => {
+              const km = Math.round(g.distance_meters / 1000);
+              const maxKm = Math.round(g.max_distance_meters / 1000);
+              const pct = Math.min(100, Math.round((g.distance_meters / g.max_distance_meters) * 100));
+              const isNearEnd = pct >= 80;
+
+              return (
+                <View
+                  key={g.id}
+                  style={[
+                    styles.gearItemRow,
+                    { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+                  ]}
+                >
+                  <View style={styles.gearIconBox}>
+                    <Ionicons
+                      name={g.type === 'Bike' ? 'bicycle' : 'footsteps'}
+                      size={20}
+                      color={colors.accent}
+                    />
+                  </View>
+                  <View style={styles.gearMainInfo}>
+                    <View style={styles.gearTitleRow}>
+                      <Text style={[styles.gearNameText, { color: colors.textPrimary }]}>{g.name}</Text>
+                      {g.is_default === 1 && (
+                        <Badge label="DEFAULT" variant="brand" style={{ marginLeft: 6 }} />
+                      )}
+                    </View>
+                    <Text style={[styles.gearSubText, { color: colors.textSecondary }]}>
+                      {g.brand} {g.model} • {km} / {maxKm} km ({pct}%)
+                    </Text>
+                    {/* Wear progress bar */}
+                    <View style={[styles.gearWearTrack, { backgroundColor: colors.surfaceSubtle }]}>
+                      <View
+                        style={[
+                          styles.gearWearFill,
+                          {
+                            width: `${pct}%`,
+                            backgroundColor: isNearEnd ? colors.warning : colors.accent,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                </View>
+              );
+            })
+          )}
+        </SurfaceCard>
+
+        {/* Safety & Privacy Tools Card */}
+        <SurfaceCard style={styles.safetyCard}>
+          <SectionHeader title="SAFETY & PRIVACY TOOLS" />
+          <View style={styles.safetyToolsRow}>
+            <TouchableOpacity
+              style={[
+                styles.safetyToolBtn,
+                { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+              ]}
+              onPress={() => setShowBeaconModal(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="shield-checkmark" size={20} color={colors.accent} style={{ marginBottom: 4 }} />
+              <Text style={[styles.safetyToolTitle, { color: colors.textPrimary }]}>Beacon Safety</Text>
+              <Text style={[styles.safetyToolSub, { color: colors.textSecondary }]}>Live location stream</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.safetyToolBtn,
+                { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
+              ]}
+              onPress={() => setShowPrivacyModal(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="lock-closed" size={20} color={colors.accent} style={{ marginBottom: 4 }} />
+              <Text style={[styles.safetyToolTitle, { color: colors.textPrimary }]}>Privacy Zones</Text>
+              <Text style={[styles.safetyToolSub, { color: colors.textSecondary }]}>Geofence redaction</Text>
+            </TouchableOpacity>
+          </View>
+        </SurfaceCard>
+
         {/* Recent Activities Section */}
         <SectionHeader title="RECENT ACTIVITIES" />
         {savedActivities.length === 0 ? (
@@ -351,6 +463,21 @@ export default function YouProfileScreen() {
           ))
         )}
       </ScrollView>
+
+      {/* Modals */}
+      <AddGearModal
+        visible={showAddGearModal}
+        onClose={() => setShowAddGearModal(false)}
+        onSaved={loadProfileData}
+      />
+      <BeaconModal
+        visible={showBeaconModal}
+        onClose={() => setShowBeaconModal(false)}
+      />
+      <PrivacyZoneModal
+        visible={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+      />
     </ScreenContainer>
   );
 }
@@ -465,5 +592,95 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 2,
     marginHorizontal: 2,
+  },
+  gearCardSection: {
+    marginVertical: spacing.sm,
+  },
+  gearHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  addGearBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addGearText: {
+    ...typography.label,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  gearEmptyText: {
+    ...typography.bodySmall,
+    fontStyle: 'italic',
+    marginVertical: spacing.sm,
+  },
+  gearItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: radii.sm,
+    borderWidth: borders.thin,
+    marginTop: spacing.sm,
+  },
+  gearIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  gearMainInfo: {
+    flex: 1,
+  },
+  gearTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  gearNameText: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  gearSubText: {
+    ...typography.caption,
+    fontSize: 11,
+    marginBottom: 4,
+  },
+  gearWearTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  gearWearFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  safetyCard: {
+    marginVertical: spacing.sm,
+  },
+  safetyToolsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+  },
+  safetyToolBtn: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: radii.sm,
+    borderWidth: borders.thin,
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  safetyToolTitle: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  safetyToolSub: {
+    ...typography.caption,
+    fontSize: 10,
+    marginTop: 2,
   },
 });
