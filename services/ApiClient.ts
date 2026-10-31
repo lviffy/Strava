@@ -1,17 +1,35 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-// In Expo Go:
-// Android Emulator uses 10.0.2.2 to access host machine
-// iOS Simulator uses localhost
-// Physical devices use LAN IP (configurable)
-const DEFAULT_HOST = Platform.OS === 'android' ? 'http://10.0.2.2:4000/api/v1' : 'http://localhost:4000/api/v1';
+function resolveDefaultHost(): string {
+  if (Platform.OS === 'web') {
+    return 'http://localhost:4000/api/v1';
+  }
+
+  // 1. Try to extract IP from Expo Metro bundler hostUri
+  // In Expo Go, hostUri looks like "10.7.205.222:8081" or "192.168.1.50:8081"
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    (Constants as any).manifest?.debuggerHost ||
+    (Constants as any).manifest2?.extra?.expoClient?.hostUri;
+
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+      return `http://${ip}:4000/api/v1`;
+    }
+  }
+
+  // 2. Direct LAN IP fallback (Host machine IP on current Wi-Fi network)
+  return 'http://10.7.205.222:4000/api/v1';
+}
 
 export class ApiClient {
-  private static baseUrl: string = DEFAULT_HOST;
+  private static baseUrl: string = resolveDefaultHost();
   private static authToken: string | null = null;
 
   static setBaseUrl(url: string) {
-    this.baseUrl = url;
+    this.baseUrl = url.endsWith('/') ? url.slice(0, -1) : url;
   }
 
   static getBaseUrl(): string {
@@ -38,25 +56,40 @@ export class ApiClient {
       headers['Authorization'] = `Bearer ${this.authToken}`;
     }
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+    // Abort controller with 6-second timeout to prevent indefinite hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-    if (!response.ok) {
-      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      try {
-        const errorJson = await response.json();
-        if (errorJson.error) {
-          errorMessage = errorJson.error;
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorJson = await response.json();
+          if (errorJson.error) {
+            errorMessage = errorJson.error;
+          }
+        } catch {
+          // Non-JSON error body
         }
-      } catch {
-        // Non-JSON error body
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
-    }
 
-    return response.json();
+      return response.json();
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw new Error(`Connection timed out (6s). Server at ${this.baseUrl} is unreachable.`);
+      }
+      throw err;
+    }
   }
 
   // Auth APIs
@@ -157,4 +190,3 @@ export class ApiClient {
     return this.request<{ athlete: any; stats: any }>(`/users/${userId}`);
   }
 }
-

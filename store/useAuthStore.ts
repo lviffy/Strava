@@ -17,6 +17,7 @@ interface AuthState {
   // Actions
   initializeAuth: () => Promise<void>;
   login: (email: string, password: string) => Promise<boolean>;
+  loginAsDemoAthlete: () => Promise<boolean>;
   register: (data: {
     email: string;
     password: string;
@@ -155,6 +156,59 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         error: err.message || 'Login failed. Please check your credentials.',
       });
       return false;
+    }
+  },
+
+  loginAsDemoAthlete: async (): Promise<boolean> => {
+    set({ isLoading: true, error: null });
+    try {
+      // 1. Attempt online login first
+      const res = await AuthService.login('athlete@strava.clone', 'password123');
+      ApiClient.setToken(res.token);
+
+      await saveSecureItem(TOKEN_KEY, res.token);
+      await saveSecureItem(USER_KEY, JSON.stringify(res.user));
+
+      set({
+        token: res.token,
+        user: res.user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      });
+      return true;
+    } catch (backendErr: any) {
+      console.warn('Backend server unreachable, using offline demo session:', backendErr.message);
+
+      // 2. Offline Demo Fallback: guaranteed immediate entry with Alex Rivera's profile
+      const demoToken = 'offline_demo_token_alex_rivera';
+      const demoUser: AthleteUser = {
+        id: '198398df-816e-44b3-ba9e-6e2ad983ad7d',
+        email: 'athlete@strava.clone',
+        firstName: 'Alex',
+        lastName: 'Rivera',
+        city: 'San Francisco, CA',
+        bio: 'Marathon runner & gravel cyclist. Always chasing PRs.',
+        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&h=300&fit=crop&crop=faces',
+        _count: {
+          activities: 3,
+          followers: 48,
+          following: 24,
+        },
+      };
+
+      ApiClient.setToken(demoToken);
+      await saveSecureItem(TOKEN_KEY, demoToken);
+      await saveSecureItem(USER_KEY, JSON.stringify(demoUser));
+
+      set({
+        token: demoToken,
+        user: demoUser,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      });
+      return true;
     }
   },
 

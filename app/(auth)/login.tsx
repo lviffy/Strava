@@ -18,9 +18,11 @@ import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../../store/useAuthStore';
 import { BrandColors } from '../../constants/Colors';
 
+import { ApiClient } from '../../services/ApiClient';
+
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const { login, loginAsDemoAthlete, isLoading, error, clearError } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,7 +54,7 @@ export default function LoginScreen() {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch {}
 
-    const success = await login('athlete@strava.clone', 'password123');
+    const success = await loginAsDemoAthlete();
     if (success) {
       try {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -168,6 +170,12 @@ export default function LoginScreen() {
             <TouchableOpacity onPress={() => router.push('/(auth)/register')} style={styles.linkTouch}>
               <Text style={styles.linkText}> Sign Up</Text>
             </TouchableOpacity>
+          </View>
+
+          <View style={{ alignItems: 'center', marginTop: 18 }}>
+            <Text style={{ color: '#636366', fontSize: 11 }}>
+              Server: {ApiClient.getBaseUrl()}
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

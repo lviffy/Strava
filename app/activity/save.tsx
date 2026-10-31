@@ -85,7 +85,7 @@ export default function SaveActivityScreen() {
               await ActivityDao.discardActivity(activityId);
             }
             resetSession();
-            router.replace('/(tabs)/');
+            router.replace('/(tabs)');
           },
         },
       ]
