@@ -1,17 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
   SafeAreaView,
-  StatusBar,
   Alert,
   Dimensions,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
+import * as Speech from 'expo-speech';
 import { useRecordingStore, SportType } from '../../store/useRecordingStore';
 import { GpsEngine } from '../../features/recording/GpsEngine';
 import {
@@ -23,7 +25,7 @@ import {
 import Colors, { BrandColors } from '../../constants/Colors';
 import { useColorScheme } from '../../components/useColorScheme';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const SPORTS: SportType[] = ['Run', 'Ride', 'Walk', 'Hike'];
 
@@ -47,6 +49,8 @@ export default function RecordScreen() {
     satelliteAccuracy,
     currentLocation,
     coordinates,
+    selectedRoute,
+    setSelectedRoute,
     setSportType,
   } = useRecordingStore();
 
@@ -70,7 +74,10 @@ export default function RecordScreen() {
       const newId = `act_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       await GpsEngine.startRecording(newId);
     } catch (err: any) {
-      Alert.alert('Location Permission Required', err.message || 'Please enable GPS location to record workouts.');
+      Alert.alert(
+        'Location Permission Required',
+        err.message || 'Please enable GPS location to record workouts.'
+      );
     }
   };
 
@@ -82,19 +89,38 @@ export default function RecordScreen() {
     await GpsEngine.resumeRecording();
   };
 
+  const handleLap = async () => {
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const km = formatDistance(distanceMeters);
+      const pace = formatPace(currentPaceSecKm);
+      Speech.speak(`Manual lap at ${km} kilometers. Pace ${pace}.`, {
+        language: 'en-US',
+        rate: 1.0,
+      });
+    } catch {}
+  };
+
   const handleFinish = async () => {
     if (distanceMeters < 20) {
       Alert.alert(
         'Discard Short Workout?',
         'This workout is under 20 meters. Would you like to discard it or save?',
         [
-          { text: 'Discard', style: 'destructive', onPress: async () => {
-            if (activityId) await GpsEngine.discardRecording(activityId);
-          }},
-          { text: 'Save', onPress: async () => {
-            await GpsEngine.stopRecording();
-            router.push('/activity/save');
-          }},
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: async () => {
+              if (activityId) await GpsEngine.discardRecording(activityId);
+            },
+          },
+          {
+            text: 'Save',
+            onPress: async () => {
+              await GpsEngine.stopRecording();
+              router.push('/activity/save');
+            },
+          },
         ]
       );
       return;
@@ -118,7 +144,7 @@ export default function RecordScreen() {
     }
 
     return (
-      <View style={[styles.gpsBadge, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+      <View style={[styles.gpsBadge, { backgroundColor: 'rgba(0,0,0,0.75)' }]}>
         <View style={[styles.gpsDot, { backgroundColor: color }]} />
         <Text style={styles.gpsText}>{label}</Text>
       </View>
@@ -127,7 +153,7 @@ export default function RecordScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
 
       {/* Top Map Section */}
       <View style={styles.mapContainer}>
@@ -144,13 +170,24 @@ export default function RecordScreen() {
             longitude: currentLocation?.longitude || -122.4194,
             latitudeDelta: 0.008,
             longitudeDelta: 0.008,
-          }}>
-          {/* Active GPS Polyline */}
+          }}
+        >
+          {/* Selected Guide Route Polyline (Overlaid underneath live recording) */}
+          {selectedRoute && selectedRoute.coordinates.length > 1 && (
+            <Polyline
+              coordinates={selectedRoute.coordinates}
+              strokeColor="#007AFF"
+              strokeWidth={5}
+              lineDashPattern={[8, 5]}
+            />
+          )}
+
+          {/* Active GPS Recorded Polyline */}
           {coordinates.length > 1 && (
             <Polyline
               coordinates={coordinates}
               strokeColor={BrandColors.primary}
-              strokeWidth={5}
+              strokeWidth={6}
               lineCap="round"
               lineJoin="round"
             />
@@ -166,6 +203,19 @@ export default function RecordScreen() {
           )}
         </MapView>
 
+        {/* Selected Route Info Pill Banner */}
+        {selectedRoute && (
+          <View style={styles.routeBanner}>
+            <Ionicons name="navigate" size={14} color="#007AFF" style={{ marginRight: 6 }} />
+            <Text style={styles.routeBannerText} numberOfLines={1}>
+              Guide: {selectedRoute.name}
+            </Text>
+            <TouchableOpacity onPress={() => setSelectedRoute(null)} style={styles.routeBannerClose}>
+              <Ionicons name="close" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Floating Top Controls */}
         <View style={styles.topFloatingBar}>
           {renderGpsStatus()}
@@ -180,12 +230,14 @@ export default function RecordScreen() {
                     styles.sportButton,
                     sportType === s && { backgroundColor: BrandColors.primary },
                   ]}
-                  onPress={() => setSportType(s)}>
+                  onPress={() => setSportType(s)}
+                >
                   <Text
                     style={[
                       styles.sportButtonText,
                       sportType === s && { color: '#FFFFFF', fontWeight: '700' },
-                    ]}>
+                    ]}
+                  >
                     {s}
                   </Text>
                 </TouchableOpacity>
@@ -202,7 +254,8 @@ export default function RecordScreen() {
                 (status === 'PAUSED' || status === 'AUTOPAUSED') && {
                   backgroundColor: BrandColors.gpsYellow,
                 },
-              ]}>
+              ]}
+            >
               <Text style={styles.statusBadgeText}>
                 {status === 'AUTOPAUSED' ? 'AUTO-PAUSED' : status}
               </Text>
@@ -273,10 +326,17 @@ export default function RecordScreen() {
           )}
 
           {status === 'RECORDING' && (
-            <TouchableOpacity style={styles.pauseButton} onPress={handlePause} activeOpacity={0.8}>
-              <Ionicons name="pause" size={28} color="#FFFFFF" />
-              <Text style={styles.controlButtonText}>PAUSE</Text>
-            </TouchableOpacity>
+            <View style={styles.recordingControlsRow}>
+              <TouchableOpacity style={styles.lapButton} onPress={handleLap} activeOpacity={0.8}>
+                <Ionicons name="flag-outline" size={20} color="#FFFFFF" />
+                <Text style={styles.lapButtonText}>LAP</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.pauseButton} onPress={handlePause} activeOpacity={0.8}>
+                <Ionicons name="pause" size={26} color="#FFFFFF" />
+                <Text style={styles.controlButtonText}>PAUSE</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {(status === 'PAUSED' || status === 'AUTOPAUSED') && (
@@ -309,19 +369,44 @@ const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFill,
   },
+  routeBanner: {
+    position: 'absolute',
+    top: 60,
+    left: 16,
+    right: 16,
+    backgroundColor: 'rgba(28, 28, 30, 0.92)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  routeBannerText: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  routeBannerClose: {
+    padding: 4,
+  },
   topFloatingBar: {
     position: 'absolute',
-    top: 16,
+    top: 12,
     left: 16,
     right: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    zIndex: 10,
   },
   gpsBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
   },
@@ -333,76 +418,71 @@ const styles = StyleSheet.create({
   },
   gpsText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
   },
   sportPills: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: 'rgba(0,0,0,0.75)',
     borderRadius: 20,
-    padding: 3,
+    padding: 4,
   },
   sportButton: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 16,
   },
   sportButtonText: {
-    color: '#CCCCCC',
+    color: '#AAAAAA',
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   statusBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   statusBadgeText: {
-    color: '#FFFFFF',
+    color: '#000000',
+    fontSize: 11,
     fontWeight: '800',
-    fontSize: 12,
     letterSpacing: 0.5,
   },
   startMarker: {
-    backgroundColor: '#00D084',
-    padding: 6,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#34C759',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
   hudPanel: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 24,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     borderTopWidth: 1,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 10,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   primaryMetricContainer: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   metricLabel: {
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 2,
+    letterSpacing: 0.8,
   },
   primaryMetricValue: {
-    fontSize: 56,
+    fontSize: 54,
     fontWeight: '900',
-    letterSpacing: -1,
+    lineHeight: 60,
   },
   metricUnit: {
     fontSize: 12,
     fontWeight: '600',
-    marginTop: -4,
   },
   metricsGrid: {
     flexDirection: 'row',
@@ -421,35 +501,35 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
   },
   secondaryMetricValue: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
-    marginVertical: 2,
+    marginTop: 2,
   },
   subMetricRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 12,
-    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 14,
   },
   subMetricText: {
-    fontSize: 13,
+    fontSize: 12,
   },
   actionButtonContainer: {
-    marginTop: 6,
     alignItems: 'center',
+    marginTop: 4,
   },
   bigStartButton: {
+    width: width - 40,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: BrandColors.primary,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    width: width - 48,
-    height: 58,
-    borderRadius: 29,
+    alignItems: 'center',
     shadowColor: BrandColors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
     elevation: 6,
   },
   startButtonText: {
@@ -457,47 +537,66 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
     letterSpacing: 1,
+    marginLeft: 8,
+  },
+  recordingControlsRow: {
+    flexDirection: 'row',
+    width: width - 40,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  lapButton: {
+    width: '32%',
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#3A3A3C',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lapButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
     marginLeft: 6,
   },
   pauseButton: {
+    width: '64%',
+    height: 54,
+    borderRadius: 27,
     backgroundColor: BrandColors.gpsYellow,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    width: width - 48,
-    height: 58,
-    borderRadius: 29,
+    alignItems: 'center',
   },
   pausedControlsRow: {
     flexDirection: 'row',
+    width: width - 40,
     justifyContent: 'space-between',
-    width: width - 48,
   },
   resumeButton: {
-    backgroundColor: BrandColors.gpsGreen,
+    width: '48%',
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: BrandColors.primary,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    height: 56,
-    borderRadius: 28,
-    marginRight: 10,
+    alignItems: 'center',
   },
   finishButton: {
+    width: '48%',
+    height: 54,
+    borderRadius: 27,
     backgroundColor: BrandColors.gpsRed,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    height: 56,
-    borderRadius: 28,
-    marginLeft: 10,
+    alignItems: 'center',
   },
   controlButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    color: '#000000',
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 1,
     marginLeft: 6,
   },
 });

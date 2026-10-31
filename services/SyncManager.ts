@@ -1,5 +1,6 @@
 import { ActivityDao, LocalActivity } from '../database/ActivityDao';
 import { ApiClient } from './ApiClient';
+import { encodePolyline } from '../utils/polyline';
 
 export class SyncManager {
   private static isSyncing = false;
@@ -23,6 +24,7 @@ export class SyncManager {
 
           const startCoord = coords.length > 0 ? coords[0] : null;
           const endCoord = coords.length > 0 ? coords[coords.length - 1] : null;
+          const encodedPolylineStr = coords.length > 0 ? encodePolyline(coords) : null;
 
           const payload = {
             id: act.id,
@@ -34,6 +36,7 @@ export class SyncManager {
             distanceMeters: act.distance_meters,
             elevationGainMeters: act.elevation_gain_meters,
             calories: act.calories,
+            polylineEncoded: encodedPolylineStr,
             startLatitude: startCoord ? startCoord.latitude : null,
             startLongitude: startCoord ? startCoord.longitude : null,
             endLatitude: endCoord ? endCoord.latitude : null,

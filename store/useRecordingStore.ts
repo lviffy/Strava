@@ -21,8 +21,22 @@ interface RecordingStore {
   currentLocation: LocationPoint | null;
   coordinates: { latitude: number; longitude: number }[];
   splits: LocalSplit[];
+  selectedRoute: {
+    id: string;
+    name: string;
+    sportType: SportType;
+    coordinates: { latitude: number; longitude: number }[];
+  } | null;
 
   // Actions
+  setSelectedRoute: (
+    route: {
+      id: string;
+      name: string;
+      sportType: SportType;
+      coordinates: { latitude: number; longitude: number }[];
+    } | null
+  ) => void;
   setStatus: (status: RecordingStatus) => void;
   setSportType: (sport: SportType) => void;
   startSession: (id: string) => void;
@@ -62,7 +76,9 @@ export const useRecordingStore = create<RecordingStore>((set, get) => ({
   currentLocation: null,
   coordinates: [],
   splits: [],
+  selectedRoute: null,
 
+  setSelectedRoute: (selectedRoute) => set({ selectedRoute }),
   setStatus: (status) => set({ status }),
   setSportType: (sportType) => set({ sportType }),
 

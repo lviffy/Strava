@@ -14,6 +14,7 @@ import MapView, { Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useRecordingStore, SportType } from '../../store/useRecordingStore';
 import { ActivityDao } from '../../database/ActivityDao';
+import { SyncManager } from '../../services/SyncManager';
 import {
   formatDuration,
   formatDistance,
@@ -58,6 +59,9 @@ export default function SaveActivityScreen() {
         Date.now(),
         calories
       );
+
+      // Trigger cloud synchronization in background
+      SyncManager.syncPendingActivities().catch(() => {});
 
       resetSession();
       router.replace('/(tabs)/you');

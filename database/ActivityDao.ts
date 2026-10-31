@@ -203,6 +203,10 @@ export class ActivityDao {
     await db.runAsync(`DELETE FROM activities WHERE id = ?;`, [id]);
   }
 
+  static async deleteActivity(id: string): Promise<void> {
+    return this.discardActivity(id);
+  }
+
   static async getPendingActivities(): Promise<LocalActivity[]> {
     const db = await getDatabase();
     const results = await db.getAllAsync<LocalActivity>(

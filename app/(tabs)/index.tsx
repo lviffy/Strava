@@ -7,12 +7,16 @@ import {
   TouchableOpacity,
   RefreshControl,
   SafeAreaView,
-  StatusBar,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { ActivityDao, LocalActivity } from '../../database/ActivityDao';
+import { ActivityDao } from '../../database/ActivityDao';
+import { ApiClient } from '../../services/ApiClient';
+import { SyncManager } from '../../services/SyncManager';
+import { useAuthStore } from '../../store/useAuthStore';
+import { CommentModal, CommentItem } from '../../components/feed/CommentModal';
 import {
   formatDuration,
   formatDistance,
@@ -21,8 +25,9 @@ import {
 import Colors, { BrandColors } from '../../constants/Colors';
 import { useColorScheme } from '../../components/useColorScheme';
 
-interface FeedItem {
+export interface FeedItem {
   id: string;
+  athleteId?: string;
   athleteName: string;
   athleteAvatarColor: string;
   title: string;
@@ -34,23 +39,31 @@ interface FeedItem {
   kudosCount: number;
   hasKudoed: boolean;
   commentsCount: number;
+  isLocalOnly?: boolean;
 }
 
 export default function HomeFeedScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'dark'];
+  const { user } = useAuthStore();
 
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Comments modal state
+  const [activeCommentActivity, setActiveCommentActivity] = useState<{ id: string; title: string } | null>(null);
+  const [activeComments, setActiveComments] = useState<CommentItem[]>([]);
+
   const loadFeed = useCallback(async () => {
     try {
+      // 1. Fetch pending/unsynced local activities from SQLite
       const localActivities = await ActivityDao.getAllSavedActivities();
+      const localPending = localActivities.filter((a) => a.sync_status === 'PENDING');
 
-      const userItems: FeedItem[] = localActivities.map((act) => ({
+      const localItems: FeedItem[] = localPending.map((act) => ({
         id: act.id,
-        athleteName: 'You',
+        athleteName: user ? `${user.firstName} ${user.lastName}` : 'You',
         athleteAvatarColor: BrandColors.primary,
         title: act.name,
         sportType: act.sport_type,
@@ -58,48 +71,66 @@ export default function HomeFeedScreen() {
         movingTimeSeconds: act.moving_time_seconds,
         elevationGainMeters: act.elevation_gain_meters,
         timestamp: act.start_timestamp,
-        kudosCount: 4,
+        kudosCount: 0,
         hasKudoed: false,
-        commentsCount: 1,
+        commentsCount: 0,
+        isLocalOnly: true,
       }));
 
-      // Demo community items to populate feed
-      const communityItems: FeedItem[] = [
-        {
-          id: 'demo_1',
-          athleteName: 'Marcus Vance',
-          athleteAvatarColor: '#007AFF',
-          title: 'Morning Trail Run & Hill Repeats 🏃‍♂️',
-          sportType: 'Run',
-          distanceMeters: 8420,
-          movingTimeSeconds: 2450,
-          elevationGainMeters: 142,
-          timestamp: Date.now() - 3600 * 1000 * 3,
-          kudosCount: 18,
-          hasKudoed: false,
-          commentsCount: 3,
-        },
-        {
-          id: 'demo_2',
-          athleteName: 'Elena Rostova',
-          athleteAvatarColor: '#34C759',
-          title: 'Coastal Headlands Century Ride 🚴‍♀️',
-          sportType: 'Ride',
-          distanceMeters: 45200,
-          movingTimeSeconds: 5800,
-          elevationGainMeters: 620,
-          timestamp: Date.now() - 3600 * 1000 * 7,
-          kudosCount: 32,
-          hasKudoed: true,
-          commentsCount: 6,
-        },
-      ];
+      // 2. Fetch server cloud activities feed
+      try {
+        const cloudRes = await ApiClient.getFeed(1, 20);
+        if (cloudRes && cloudRes.activities) {
+          const cloudItems: FeedItem[] = cloudRes.activities.map((act: any) => ({
+            id: act.id,
+            athleteId: act.userId,
+            athleteName: act.user ? `${act.user.firstName} ${act.user.lastName}` : 'Athlete',
+            athleteAvatarColor: act.userId === user?.id ? BrandColors.primary : '#007AFF',
+            title: act.name,
+            sportType: act.sportType,
+            distanceMeters: act.distanceMeters,
+            movingTimeSeconds: act.movingTimeSeconds,
+            elevationGainMeters: act.elevationGainMeters,
+            timestamp: new Date(act.startTime).getTime(),
+            kudosCount: act._count?.kudos ?? (act.kudos ? act.kudos.length : 0),
+            hasKudoed: !!act.hasKudoed,
+            commentsCount: act._count?.comments ?? (act.comments ? act.comments.length : 0),
+            isLocalOnly: false,
+          }));
 
-      setFeedItems([...userItems, ...communityItems]);
+          // Avoid duplicates if local activity was already synced
+          const cloudIds = new Set(cloudItems.map((c) => c.id));
+          const uniqueLocal = localItems.filter((l) => !cloudIds.has(l.id));
+
+          setFeedItems([...uniqueLocal, ...cloudItems]);
+          return;
+        }
+      } catch (cloudErr) {
+        console.log('Server feed unavailable, using local cache:', cloudErr);
+      }
+
+      // Fallback: If cloud fails or offline, display all local activities
+      const allLocalItems: FeedItem[] = localActivities.map((act) => ({
+        id: act.id,
+        athleteName: user ? `${user.firstName} ${user.lastName}` : 'You',
+        athleteAvatarColor: BrandColors.primary,
+        title: act.name,
+        sportType: act.sport_type,
+        distanceMeters: act.distance_meters,
+        movingTimeSeconds: act.moving_time_seconds,
+        elevationGainMeters: act.elevation_gain_meters,
+        timestamp: act.start_timestamp,
+        kudosCount: 1,
+        hasKudoed: false,
+        commentsCount: 0,
+        isLocalOnly: act.sync_status === 'PENDING',
+      }));
+
+      setFeedItems(allLocalItems);
     } catch (err) {
       console.error('Error loading feed:', err);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     loadFeed();
@@ -107,6 +138,9 @@ export default function HomeFeedScreen() {
 
   const onRefresh = async () => {
     setIsRefreshing(true);
+    try {
+      await SyncManager.syncPendingActivities();
+    } catch {}
     await loadFeed();
     setIsRefreshing(false);
   };
@@ -116,6 +150,7 @@ export default function HomeFeedScreen() {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch {}
 
+    // Optimistic UI update
     setFeedItems((prev) =>
       prev.map((i) => {
         if (i.id === item.id) {
@@ -123,16 +158,55 @@ export default function HomeFeedScreen() {
           return {
             ...i,
             hasKudoed: nextState,
-            kudosCount: nextState ? i.kudosCount + 1 : i.kudosCount - 1,
+            kudosCount: nextState ? i.kudosCount + 1 : Math.max(0, i.kudosCount - 1),
           };
         }
         return i;
       })
     );
+
+    // Call API if not local only
+    if (!item.isLocalOnly) {
+      try {
+        const res = await ApiClient.toggleKudos(item.id);
+        setFeedItems((prev) =>
+          prev.map((i) => (i.id === item.id ? { ...i, hasKudoed: res.kudoed, kudosCount: res.kudosCount } : i))
+        );
+      } catch (e) {
+        console.warn('Failed to toggle kudos on server:', e);
+      }
+    }
+  };
+
+  const handleOpenComments = async (item: FeedItem) => {
+    setActiveCommentActivity({ id: item.id, title: item.title });
+    setActiveComments([]);
+
+    if (!item.isLocalOnly) {
+      try {
+        const res = await ApiClient.getActivity(item.id);
+        if (res.activity && res.activity.comments) {
+          setActiveComments(res.activity.comments);
+        }
+      } catch (err) {
+        console.warn('Failed to load comments:', err);
+      }
+    }
+  };
+
+  const handleCommentAdded = (newComment: CommentItem) => {
+    setActiveComments((prev) => [...prev, newComment]);
+    if (activeCommentActivity) {
+      setFeedItems((prev) =>
+        prev.map((i) =>
+          i.id === activeCommentActivity.id ? { ...i, commentsCount: i.commentsCount + 1 } : i
+        )
+      );
+    }
   };
 
   const renderCard = ({ item }: { item: FeedItem }) => {
-    const isSelf = item.athleteName === 'You';
+    const isSelf = item.athleteId === user?.id || item.athleteName === 'You' || item.isLocalOnly;
 
     return (
       <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
@@ -156,8 +230,16 @@ export default function HomeFeedScreen() {
               • {item.sportType}
             </Text>
           </View>
-          <View style={styles.sportTag}>
-            <Text style={styles.sportTagText}>{item.sportType.toUpperCase()}</Text>
+          <View style={styles.headerRightBadge}>
+            {item.isLocalOnly && (
+              <View style={styles.pendingBadge}>
+                <Ionicons name="cloud-upload-outline" size={12} color="#FF9500" style={{ marginRight: 4 }} />
+                <Text style={styles.pendingBadgeText}>Pending</Text>
+              </View>
+            )}
+            <View style={styles.sportTag}>
+              <Text style={styles.sportTagText}>{item.sportType.toUpperCase()}</Text>
+            </View>
           </View>
         </View>
 
@@ -168,7 +250,8 @@ export default function HomeFeedScreen() {
               router.push(`/activity/${item.id}`);
             }
           }}
-          activeOpacity={isSelf ? 0.7 : 1}>
+          activeOpacity={isSelf ? 0.7 : 1}
+        >
           <Text style={[styles.activityTitle, { color: theme.text }]}>{item.title}</Text>
         </TouchableOpacity>
 
@@ -204,7 +287,8 @@ export default function HomeFeedScreen() {
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => handleKudos(item)}
-            activeOpacity={0.7}>
+            activeOpacity={0.7}
+          >
             <Ionicons
               name={item.hasKudoed ? 'thumbs-up' : 'thumbs-up-outline'}
               size={20}
@@ -215,12 +299,17 @@ export default function HomeFeedScreen() {
                 styles.actionText,
                 { color: item.hasKudoed ? BrandColors.primary : theme.textSecondary },
                 item.hasKudoed && { fontWeight: '700' },
-              ]}>
-              {item.kudosCount} Kudos
+              ]}
+            >
+              {item.kudosCount} {item.kudosCount === 1 ? 'Kudo' : 'Kudos'}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleOpenComments(item)}
+            activeOpacity={0.7}
+          >
             <Ionicons name="chatbubble-outline" size={19} color={theme.textSecondary} />
             <Text style={[styles.actionText, { color: theme.textSecondary }]}>
               {item.commentsCount}
@@ -233,22 +322,38 @@ export default function HomeFeedScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <FlatList
         data={feedItems}
         keyExtractor={(item) => item.id}
         renderItem={renderCard}
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={BrandColors.primary} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={BrandColors.primary}
+          />
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="fitness-outline" size={48} color={theme.textSecondary} />
             <Text style={[styles.emptyText, { color: theme.text }]}>No activities in feed yet.</Text>
             <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>
-              Record your first workout using the center Record button!
+              Pull down to refresh or record your first workout using the center Record button!
             </Text>
           </View>
         }
+      />
+
+      {/* Interactive Comments Modal */}
+      <CommentModal
+        visible={!!activeCommentActivity}
+        activityId={activeCommentActivity?.id || null}
+        activityTitle={activeCommentActivity?.title || ''}
+        comments={activeComments}
+        onClose={() => setActiveCommentActivity(null)}
+        onCommentAdded={handleCommentAdded}
       />
     </SafeAreaView>
   );
@@ -269,7 +374,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -279,31 +384,49 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
   avatarInitials: {
     color: '#FFFFFF',
     fontWeight: '800',
-    fontSize: 14,
+    fontSize: 15,
   },
   headerMeta: {
     flex: 1,
-    marginLeft: 12,
   },
   athleteName: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   timeAgo: {
     fontSize: 12,
     marginTop: 2,
   },
+  headerRightBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 149, 0, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginRight: 6,
+  },
+  pendingBadgeText: {
+    color: '#FF9500',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   sportTag: {
-    backgroundColor: 'rgba(252, 82, 0, 0.12)',
+    backgroundColor: 'rgba(252, 82, 0, 0.15)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -314,9 +437,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   activityTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     marginBottom: 14,
+    lineHeight: 22,
   },
   metricGrid: {
     flexDirection: 'row',
@@ -334,15 +458,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    marginBottom: 4,
   },
   metricValue: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
-    marginTop: 2,
   },
   unitText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   cardFooter: {
     flexDirection: 'row',
@@ -358,22 +482,24 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 13,
     marginLeft: 6,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 80,
+    paddingVertical: 64,
+    paddingHorizontal: 32,
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 12,
+    fontSize: 17,
+    fontWeight: '800',
+    marginTop: 14,
+    textAlign: 'center',
   },
   emptySubtext: {
-    fontSize: 14,
-    marginTop: 6,
+    fontSize: 13,
     textAlign: 'center',
-    paddingHorizontal: 40,
+    marginTop: 8,
+    lineHeight: 18,
   },
 });

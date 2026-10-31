@@ -26,7 +26,7 @@ export class ApiClient {
     return this.authToken;
   }
 
-  private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  public static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -135,8 +135,26 @@ export class ApiClient {
     return this.request<{ segmentId: string; leaderboard: any[] }>(`/segments/${segmentId}/leaderboard`);
   }
 
+  static async addComment(activityId: string, content: string) {
+    return this.request<{ comment: any }>(`/activities/${activityId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  static async deleteActivity(activityId: string) {
+    return this.request<{ message: string }>(`/activities/${activityId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Athlete Profile & Stats
+  static async getCurrentUser() {
+    return this.request<{ user: any }>('/auth/me');
+  }
+
   static async getAthleteProfile(userId: string) {
     return this.request<{ athlete: any; stats: any }>(`/users/${userId}`);
   }
 }
+

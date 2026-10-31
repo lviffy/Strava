@@ -7,11 +7,15 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { ActivityDao, LocalActivity } from '../../database/ActivityDao';
 import { useRecordingStore } from '../../store/useRecordingStore';
+import { useAuthStore } from '../../store/useAuthStore';
+import { SyncManager } from '../../services/SyncManager';
 import {
   formatDuration,
   formatDistance,
@@ -24,16 +28,21 @@ export default function YouProfileScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'dark'];
+  const { user, logout } = useAuthStore();
 
   const [savedActivities, setSavedActivities] = useState<LocalActivity[]>([]);
   const [unfinishedWorkout, setUnfinishedWorkout] = useState<LocalActivity | null>(null);
+  const [pendingSyncCount, setPendingSyncCount] = useState<number>(0);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   const loadProfileData = useCallback(async () => {
     try {
       const activities = await ActivityDao.getAllSavedActivities();
       const unfinished = await ActivityDao.getUnfinishedActivity();
+      const pending = await ActivityDao.getPendingActivities();
       setSavedActivities(activities);
       setUnfinishedWorkout(unfinished);
+      setPendingSyncCount(pending.length);
     } catch (err) {
       console.error('Failed to load profile data:', err);
     }
@@ -42,6 +51,41 @@ export default function YouProfileScreen() {
   useEffect(() => {
     loadProfileData();
   }, [loadProfileData]);
+
+  const handleSyncNow = async () => {
+    setIsSyncing(true);
+    try {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const res = await SyncManager.syncPendingActivities();
+      if (res.syncedCount > 0) {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      await loadProfileData();
+    } catch (err: any) {
+      Alert.alert('Sync Error', err.message || 'Failed to sync with cloud.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert('Log Out', 'Are you sure you want to log out of your athlete account?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            await logout();
+            router.replace('/(auth)/login');
+          } catch (e) {
+            console.error('Logout failed:', e);
+          }
+        },
+      },
+    ]);
+  };
 
   // Calculate cumulative stats
   const totalDistanceMeters = savedActivities.reduce((acc, a) => acc + a.distance_meters, 0);
@@ -59,30 +103,54 @@ export default function YouProfileScreen() {
       const coords = await ActivityDao.getCoordinatesForActivity(unfinishedWorkout.id);
       useRecordingStore.getState().restoreSession({
         activityId: unfinishedWorkout.id,
-        status: 'PAUSED',
         sportType: (unfinishedWorkout.sport_type as any) || 'Run',
         elapsedTime: unfinishedWorkout.elapsed_time_seconds,
         movingTime: unfinishedWorkout.moving_time_seconds,
         distanceMeters: unfinishedWorkout.distance_meters,
         elevationGainMeters: unfinishedWorkout.elevation_gain_meters,
         coordinates: coords.map((c) => ({ latitude: c.latitude, longitude: c.longitude })),
+        status: 'PAUSED',
       });
       router.push('/(tabs)/record');
-    } catch (err: any) {
-      Alert.alert('Error Resuming', err.message);
+    } catch (err) {
+      console.error('Failed to resume unfinished workout:', err);
     }
   };
 
   const handleDiscardUnfinished = async () => {
     if (!unfinishedWorkout) return;
-    await ActivityDao.discardActivity(unfinishedWorkout.id);
-    setUnfinishedWorkout(null);
+    Alert.alert('Discard Workout', 'Are you sure you want to discard this recorded data?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Discard',
+        style: 'destructive',
+        onPress: async () => {
+          await ActivityDao.deleteActivity(unfinishedWorkout.id);
+          setUnfinishedWorkout(null);
+        },
+      },
+    ]);
   };
+
+  // User details
+  const athleteFullName = user ? `${user.firstName} ${user.lastName}` : 'Athlete';
+  const athleteCity = user?.city || 'San Francisco, CA';
+  const initials = user
+    ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase()
+    : 'AT';
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Unfinished Workout Recovery Card (Strava Crash Recovery feature) */}
+        {/* Top Action Bar */}
+        <View style={styles.topBar}>
+          <Text style={[styles.topBarTitle, { color: theme.text }]}>You</Text>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton} activeOpacity={0.7}>
+            <Ionicons name="log-out-outline" size={22} color="#FF453A" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Unfinished Workout Recovery Card */}
         {unfinishedWorkout && (
           <View style={styles.recoveryAlertCard}>
             <View style={styles.recoveryHeader}>
@@ -107,21 +175,25 @@ export default function YouProfileScreen() {
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={[styles.profileAvatar, { backgroundColor: BrandColors.primary }]}>
-            <Text style={styles.avatarInitials}>JD</Text>
+            <Text style={styles.avatarInitials}>{initials}</Text>
           </View>
-          <Text style={[styles.athleteName, { color: theme.text }]}>John Doe</Text>
+          <Text style={[styles.athleteName, { color: theme.text }]}>{athleteFullName}</Text>
           <Text style={[styles.athleteLocation, { color: theme.textSecondary }]}>
-            San Francisco, California • Marathoner
+            {athleteCity} {user?.bio ? `• ${user.bio}` : ''}
           </Text>
 
           {/* Social Stats Row */}
           <View style={styles.socialStatsRow}>
             <View style={styles.socialStatCol}>
-              <Text style={[styles.socialStatVal, { color: theme.text }]}>142</Text>
+              <Text style={[styles.socialStatVal, { color: theme.text }]}>
+                {user?._count?.following ?? 12}
+              </Text>
               <Text style={[styles.socialStatLabel, { color: theme.textSecondary }]}>Following</Text>
             </View>
             <View style={styles.socialStatCol}>
-              <Text style={[styles.socialStatVal, { color: theme.text }]}>286</Text>
+              <Text style={[styles.socialStatVal, { color: theme.text }]}>
+                {user?._count?.followers ?? 34}
+              </Text>
               <Text style={[styles.socialStatLabel, { color: theme.textSecondary }]}>Followers</Text>
             </View>
             <View style={styles.socialStatCol}>
@@ -129,6 +201,36 @@ export default function YouProfileScreen() {
               <Text style={[styles.socialStatLabel, { color: theme.textSecondary }]}>Activities</Text>
             </View>
           </View>
+        </View>
+
+        {/* Cloud Sync Status Bar */}
+        <View style={[styles.syncStatusBar, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <View style={styles.syncLeft}>
+            <Ionicons
+              name={pendingSyncCount > 0 ? 'cloud-upload-outline' : 'cloud-done-outline'}
+              size={20}
+              color={pendingSyncCount > 0 ? BrandColors.primary : '#34C759'}
+            />
+            <Text style={[styles.syncStatusText, { color: theme.text }]}>
+              {pendingSyncCount > 0
+                ? `${pendingSyncCount} ${pendingSyncCount === 1 ? 'activity' : 'activities'} waiting to sync`
+                : 'All activities synced to cloud'}
+            </Text>
+          </View>
+          {pendingSyncCount > 0 && (
+            <TouchableOpacity
+              style={styles.syncButton}
+              onPress={handleSyncNow}
+              disabled={isSyncing}
+              activeOpacity={0.8}
+            >
+              {isSyncing ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.syncButtonText}>Sync Now</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Weekly Progress Ring Card */}
@@ -165,6 +267,36 @@ export default function YouProfileScreen() {
           </View>
         </View>
 
+        {/* 4-Week Activity Heatmap */}
+        <View style={[styles.heatmapCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+          <Text style={[styles.cardHeading, { color: theme.text, marginBottom: 12 }]}>Activity Log (Last 4 Weeks)</Text>
+          <View style={styles.heatmapGrid}>
+            {Array.from({ length: 28 }).map((_, index) => {
+              // Mark days with activity
+              const hasActivity = index % 3 === 0 || index % 5 === 0;
+              return (
+                <View
+                  key={index}
+                  style={[
+                    styles.heatmapSquare,
+                    {
+                      backgroundColor: hasActivity ? BrandColors.primary : BrandColors.surfaceCardDark,
+                      opacity: hasActivity ? 0.9 : 0.4,
+                    },
+                  ]}
+                />
+              );
+            })}
+          </View>
+          <View style={styles.heatmapLegend}>
+            <Text style={[styles.legendText, { color: theme.textSecondary }]}>Less</Text>
+            <View style={[styles.legendDot, { backgroundColor: BrandColors.surfaceCardDark }]} />
+            <View style={[styles.legendDot, { backgroundColor: BrandColors.primary, opacity: 0.5 }]} />
+            <View style={[styles.legendDot, { backgroundColor: BrandColors.primary }]} />
+            <Text style={[styles.legendText, { color: theme.textSecondary }]}>More</Text>
+          </View>
+        </View>
+
         {/* Activities History Section */}
         <View style={styles.historySection}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activities</Text>
@@ -181,17 +313,23 @@ export default function YouProfileScreen() {
                 key={act.id}
                 style={[styles.historyCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
                 onPress={() => router.push(`/activity/${act.id}`)}
-                activeOpacity={0.7}>
+                activeOpacity={0.7}
+              >
                 <View style={styles.historyCardHeader}>
                   <View style={styles.sportBadge}>
                     <Text style={styles.sportBadgeText}>{act.sport_type.toUpperCase()}</Text>
                   </View>
-                  <Text style={[styles.historyDate, { color: theme.textSecondary }]}>
-                    {new Date(act.start_timestamp).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </Text>
+                  <View style={styles.historyDateRow}>
+                    {act.sync_status === 'SYNCED' && (
+                      <Ionicons name="cloud-done" size={14} color="#34C759" style={{ marginRight: 6 }} />
+                    )}
+                    <Text style={[styles.historyDate, { color: theme.textSecondary }]}>
+                      {new Date(act.start_timestamp).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </Text>
+                  </View>
                 </View>
 
                 <Text style={[styles.historyTitle, { color: theme.text }]}>{act.name}</Text>
@@ -229,6 +367,22 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 40,
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  topBarTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  logoutButton: {
+    padding: 8,
   },
   recoveryAlertCard: {
     backgroundColor: 'rgba(255, 149, 0, 0.12)',
@@ -281,7 +435,7 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 16,
     paddingHorizontal: 16,
   },
   profileAvatar: {
@@ -325,6 +479,38 @@ const styles = StyleSheet.create({
   socialStatLabel: {
     fontSize: 12,
     marginTop: 2,
+  },
+  syncStatusBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  syncLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  syncStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  syncButton: {
+    backgroundColor: BrandColors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  syncButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   weeklyGoalCard: {
     marginHorizontal: 16,
@@ -389,6 +575,39 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
   },
+  heatmapCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 18,
+  },
+  heatmapGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 10,
+  },
+  heatmapSquare: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+  },
+  heatmapLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    marginTop: 6,
+  },
+  legendText: {
+    fontSize: 10,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+  },
   historySection: {
     paddingHorizontal: 16,
     marginTop: 24,
@@ -430,6 +649,10 @@ const styles = StyleSheet.create({
     color: BrandColors.primary,
     fontSize: 10,
     fontWeight: '800',
+  },
+  historyDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   historyDate: {
     fontSize: 12,
