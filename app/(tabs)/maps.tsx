@@ -5,17 +5,20 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ApiClient } from '../../services/ApiClient';
 import { useRecordingStore, SportType } from '../../store/useRecordingStore';
-import Colors, { BrandColors } from '../../constants/Colors';
 import { useColorScheme } from '../../components/useColorScheme';
+import theme, { radii, spacing, typography, borders, shadows } from '../../constants/theme';
+import { ScreenContainer } from '../../components/ui/ScreenContainer';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
+import { SegmentedControl } from '../../components/ui/SegmentedControl';
 
 export interface RouteItem {
   id: string;
@@ -80,17 +83,20 @@ const FALLBACK_ROUTES: RouteItem[] = [
   },
 ];
 
+const FILTER_SPORTS = ['All', 'Run', 'Ride', 'Hike'] as const;
+type FilterSportType = typeof FILTER_SPORTS[number];
+
 export default function MapsScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'dark'];
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = theme.theme[colorScheme];
   const mapRef = useRef<MapView | null>(null);
 
   const { setSelectedRoute: setGlobalSelectedRoute } = useRecordingStore();
 
   const [routes, setRoutes] = useState<RouteItem[]>(FALLBACK_ROUTES);
   const [selectedRoute, setSelectedRoute] = useState<RouteItem>(FALLBACK_ROUTES[0]);
-  const [filterSport, setFilterSport] = useState<string>('All');
+  const [filterSport, setFilterSport] = useState<FilterSportType>('All');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Fetch nearby segments from PostGIS backend
@@ -102,7 +108,6 @@ export default function MapsScreen() {
 
       if (res && res.segments && res.segments.length > 0) {
         const mappedRoutes: RouteItem[] = res.segments.map((s: any) => {
-          // Parse start and end coordinates into a segment path
           const coords = [
             { latitude: s.startLatitude, longitude: s.startLongitude },
             {
@@ -139,7 +144,6 @@ export default function MapsScreen() {
   }, [filterSport]);
 
   useEffect(() => {
-    // Default to San Francisco center
     fetchNearbySegments(37.78, -122.44);
   }, [fetchNearbySegments]);
 
@@ -180,38 +184,18 @@ export default function MapsScreen() {
       : routes.filter((r) => r.sportType === filterSport);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Top Filter Chips */}
-      <View style={styles.filterRow}>
-        {['All', 'Run', 'Ride', 'Hike'].map((type) => (
-          <TouchableOpacity
-            key={type}
-            style={[
-              styles.filterChip,
-              { backgroundColor: theme.card, borderColor: theme.cardBorder },
-              filterSport === type && {
-                backgroundColor: BrandColors.primary,
-                borderColor: BrandColors.primary,
-              },
-            ]}
-            onPress={() => setFilterSport(type)}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                { color: theme.text },
-                filterSport === type && { color: '#FFFFFF', fontWeight: '700' },
-              ]}
-            >
-              {type}
-            </Text>
-          </TouchableOpacity>
-        ))}
-
+    <ScreenContainer safeBottom={false}>
+      {/* Top Filter Bar */}
+      <View style={[styles.topBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <View style={styles.segmentWrapper}>
+          <SegmentedControl
+            options={FILTER_SPORTS as unknown as string[]}
+            selectedOption={filterSport}
+            onSelect={(sport) => setFilterSport(sport as FilterSportType)}
+          />
+        </View>
         {isLoading && (
-          <View style={styles.loadingIndicator}>
-            <ActivityIndicator size="small" color={BrandColors.primary} />
-          </View>
+          <ActivityIndicator size="small" color={colors.accent} style={{ marginLeft: spacing.sm }} />
         )}
       </View>
 
@@ -227,146 +211,135 @@ export default function MapsScreen() {
             latitudeDelta: 0.1,
             longitudeDelta: 0.1,
           }}
-          onRegionChangeComplete={(region: Region) => {
-            // Can optionally re-fetch on large pans
-          }}
         >
           {/* Active selected route polyline */}
           {selectedRoute && (
             <Polyline
               coordinates={selectedRoute.coordinates}
-              strokeColor={BrandColors.primary}
+              strokeColor={colors.accent}
               strokeWidth={5}
             />
           )}
 
-          {/* Markers for all routes */}
-          {filteredRoutes.map((route) => (
-            <Marker
-              key={route.id}
-              coordinate={route.coordinates[0]}
-              onPress={() => handleSelectRoute(route)}
-            >
-              <View
-                style={[
-                  styles.routePin,
-                  selectedRoute?.id === route.id && {
-                    backgroundColor: BrandColors.primary,
-                    transform: [{ scale: 1.15 }],
-                  },
-                ]}
+          {/* Markers for routes */}
+          {filteredRoutes.map((route) => {
+            const isSelected = selectedRoute?.id === route.id;
+            return (
+              <Marker
+                key={route.id}
+                coordinate={route.coordinates[0]}
+                onPress={() => handleSelectRoute(route)}
               >
-                <Ionicons
-                  name={route.sportType === 'Ride' ? 'bicycle' : 'walk'}
-                  size={16}
-                  color="#FFFFFF"
-                />
-              </View>
-            </Marker>
-          ))}
+                <View
+                  style={[
+                    styles.routePin,
+                    {
+                      backgroundColor: isSelected ? colors.accent : colors.surface,
+                      borderColor: isSelected ? colors.surface : colors.border,
+                    },
+                    shadows.none,
+                  ]}
+                >
+                  <Ionicons
+                    name={route.sportType === 'Ride' ? 'bicycle' : 'walk'}
+                    size={14}
+                    color={isSelected ? '#FFFFFF' : colors.textPrimary}
+                  />
+                </View>
+              </Marker>
+            );
+          })}
         </MapView>
       </View>
 
-      {/* Bottom Route Tray with Action CTA */}
-      <View style={[styles.bottomTray, { backgroundColor: theme.background }]}>
-        {/* Route Cards Horizontal Carousel */}
+      {/* Bottom Route Tray */}
+      <View style={[styles.bottomTray, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.cardsScroll}
         >
-          {filteredRoutes.map((route) => (
-            <TouchableOpacity
-              key={route.id}
-              style={[
-                styles.routeCard,
-                { backgroundColor: theme.card, borderColor: theme.cardBorder },
-                selectedRoute?.id === route.id && {
-                  borderColor: BrandColors.primary,
-                  borderWidth: 2,
-                },
-              ]}
-              onPress={() => handleSelectRoute(route)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.cardHeaderRow}>
-                <View style={styles.sportBadge}>
-                  <Text style={styles.sportBadgeText}>{route.sportType.toUpperCase()}</Text>
+          {filteredRoutes.map((route) => {
+            const isSelected = selectedRoute?.id === route.id;
+            return (
+              <TouchableOpacity
+                key={route.id}
+                style={[
+                  styles.routeCard,
+                  {
+                    backgroundColor: colors.surfaceSecondary,
+                    borderColor: isSelected ? colors.accent : colors.border,
+                    borderWidth: isSelected ? 2 : borders.thin,
+                  },
+                  shadows.none,
+                ]}
+                onPress={() => handleSelectRoute(route)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.cardHeaderRow}>
+                  <Badge label={route.sportType} variant={isSelected ? 'brand' : 'neutral'} />
+                  <Text style={[styles.surfaceText, { color: colors.textSecondary }]}>
+                    {route.surface}
+                  </Text>
                 </View>
-                <Text style={[styles.surfaceText, { color: theme.textSecondary }]}>
-                  {route.surface}
+
+                <Text style={[styles.routeName, { color: colors.textPrimary }]} numberOfLines={1}>
+                  {route.name}
                 </Text>
-              </View>
 
-              <Text style={[styles.routeName, { color: theme.text }]} numberOfLines={1}>
-                {route.name}
-              </Text>
+                <View style={styles.routeStatsRow}>
+                  <View style={styles.statCol}>
+                    <Text style={[styles.statVal, { color: colors.textPrimary }]}>
+                      {route.distanceKm} km
+                    </Text>
+                    <Text style={[styles.statSub, { color: colors.textSecondary }]}>Distance</Text>
+                  </View>
 
-              <View style={styles.routeStatsRow}>
-                <View style={styles.statCol}>
-                  <Text style={[styles.statVal, { color: theme.text }]}>
-                    {route.distanceKm} km
-                  </Text>
-                  <Text style={[styles.statSub, { color: theme.textSecondary }]}>Distance</Text>
+                  <View style={styles.statCol}>
+                    <Text style={[styles.statVal, { color: colors.textPrimary }]}>
+                      +{route.elevationGainM} m
+                    </Text>
+                    <Text style={[styles.statSub, { color: colors.textSecondary }]}>Climb</Text>
+                  </View>
+
+                  <View style={styles.statCol}>
+                    <Text style={[styles.statVal, { color: colors.textPrimary }]}>{route.estTime}</Text>
+                    <Text style={[styles.statSub, { color: colors.textSecondary }]}>Est. Time</Text>
+                  </View>
                 </View>
-
-                <View style={styles.statCol}>
-                  <Text style={[styles.statVal, { color: theme.text }]}>
-                    {route.elevationGainM} m
-                  </Text>
-                  <Text style={[styles.statSub, { color: theme.textSecondary }]}>Climb</Text>
-                </View>
-
-                <View style={styles.statCol}>
-                  <Text style={[styles.statVal, { color: theme.text }]}>{route.estTime}</Text>
-                  <Text style={[styles.statSub, { color: theme.textSecondary }]}>Est. Time</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* Primary CTA: Record With Route */}
         {selectedRoute && (
-          <TouchableOpacity
-            style={styles.startRouteButton}
-            onPress={handleStartWithRoute}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="navigate" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-            <Text style={styles.startRouteButtonText}>
-              Record with {selectedRoute.name}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.ctaWrapper}>
+            <Button
+              title={`Record with ${selectedRoute.name}`}
+              size="lg"
+              variant="primary"
+              onPress={handleStartWithRoute}
+              icon={<Ionicons name="navigate-outline" size={18} color="#FFFFFF" />}
+            />
+          </View>
         )}
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  filterRow: {
+  topBar: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    borderBottomWidth: borders.thin,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
     zIndex: 10,
   },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginRight: 8,
-  },
-  filterChipText: {
-    fontSize: 13,
-  },
-  loadingIndicator: {
-    marginLeft: 6,
+  segmentWrapper: {
+    flex: 1,
   },
   mapContainer: {
     flex: 1,
@@ -375,91 +348,64 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
   },
   routePin: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#3A3A3C',
+    width: 28,
+    height: 28,
+    borderRadius: radii.sm,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 4,
   },
   bottomTray: {
-    paddingBottom: 16,
-    paddingTop: 8,
+    borderTopWidth: borders.thin,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxl,
+    ...shadows.none,
   },
   cardsScroll: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
   },
   routeCard: {
-    width: 250,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-    marginRight: 12,
+    width: 240,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginRight: spacing.md,
   },
   cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
-  },
-  sportBadge: {
-    backgroundColor: 'rgba(252, 82, 0, 0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  sportBadgeText: {
-    color: BrandColors.primary,
-    fontSize: 10,
-    fontWeight: '800',
+    marginBottom: spacing.xs,
   },
   surfaceText: {
-    fontSize: 11,
+    ...typography.caption,
   },
   routeName: {
-    fontSize: 15,
-    fontWeight: '800',
-    marginBottom: 10,
+    ...typography.heading3,
+    marginBottom: spacing.sm,
   },
   routeStatsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    borderTopWidth: borders.thin,
+    borderColor: 'rgba(150,150,150,0.15)',
+    paddingTop: spacing.xs,
   },
   statCol: {
     alignItems: 'center',
   },
   statVal: {
-    fontSize: 14,
-    fontWeight: '800',
+    ...typography.caption,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
   statSub: {
-    fontSize: 10,
-    marginTop: 2,
+    ...typography.caption,
+    fontSize: 9,
+    marginTop: 1,
   },
-  startRouteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: BrandColors.primary,
-    marginHorizontal: 16,
-    marginTop: 6,
-    borderRadius: 12,
-    height: 48,
-    shadowColor: BrandColors.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  startRouteButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
+  ctaWrapper: {
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xs,
   },
 });

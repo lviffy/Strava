@@ -15,8 +15,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { ApiClient } from '../../services/ApiClient';
-import Colors, { BrandColors } from '../../constants/Colors';
 import { useColorScheme } from '../useColorScheme';
+import theme, { radii, spacing, typography, borders, shadows } from '../../constants/theme';
+import { AthleteAvatar } from '../activity/AthleteAvatar';
+import { EmptyState } from '../ui/EmptyState';
 
 export interface CommentItem {
   id: string;
@@ -47,8 +49,8 @@ export function CommentModal({
   onClose,
   onCommentAdded,
 }: CommentModalProps) {
-  const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'dark'];
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = theme.theme[colorScheme];
 
   const [inputContent, setInputContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,17 +79,21 @@ export function CommentModal({
   return (
     <Modal visible={visible} animationType="slide" transparent presentationStyle="overFullScreen">
       <View style={styles.backdrop}>
-        <SafeAreaView style={[styles.sheetContainer, { backgroundColor: theme.card }]}>
+        <SafeAreaView style={[styles.sheetContainer, { backgroundColor: colors.surface }]}>
           {/* Header */}
-          <View style={[styles.header, { borderBottomColor: theme.cardBorder }]}>
-            <View>
-              <Text style={[styles.headerTitle, { color: theme.text }]}>Comments</Text>
-              <Text style={[styles.headerSub, { color: theme.textSecondary }]} numberOfLines={1}>
+          <View style={[styles.header, { borderBottomColor: colors.border }]}>
+            <View style={styles.headerTextCol}>
+              <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Comments</Text>
+              <Text style={[styles.headerSub, { color: colors.textSecondary }]} numberOfLines={1}>
                 {activityTitle}
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={theme.text} />
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeButton}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="close" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -97,34 +103,34 @@ export function CommentModal({
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons name="chatbubbles-outline" size={36} color={theme.textSecondary} />
-                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                  No comments yet. Be the first to congratulate the athlete!
-                </Text>
-              </View>
+              <EmptyState
+                iconName="chatbubbles-outline"
+                title="No comments yet"
+                description="Be the first to congratulate the athlete on their effort!"
+              />
             }
             renderItem={({ item }) => (
-              <View style={[styles.commentRow, { borderBottomColor: theme.cardBorder }]}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarInitials}>
-                    {item.user.firstName?.[0]}
-                    {item.user.lastName?.[0]}
-                  </Text>
-                </View>
+              <View style={[styles.commentRow, { borderBottomColor: colors.borderSubtle }]}>
+                <AthleteAvatar
+                  name={`${item.user.firstName} ${item.user.lastName}`}
+                  avatarUrl={item.user.avatarUrl}
+                  size="sm"
+                />
                 <View style={styles.commentBody}>
                   <View style={styles.nameRow}>
-                    <Text style={[styles.userName, { color: theme.text }]}>
+                    <Text style={[styles.userName, { color: colors.textPrimary }]}>
                       {item.user.firstName} {item.user.lastName}
                     </Text>
-                    <Text style={[styles.commentTime, { color: theme.textSecondary }]}>
+                    <Text style={[styles.commentTime, { color: colors.textMuted }]}>
                       {new Date(item.createdAt).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                       })}
                     </Text>
                   </View>
-                  <Text style={[styles.commentText, { color: theme.text }]}>{item.content}</Text>
+                  <Text style={[styles.commentText, { color: colors.textSecondary }]}>
+                    {item.content}
+                  </Text>
                 </View>
               </View>
             )}
@@ -132,11 +138,24 @@ export function CommentModal({
 
           {/* Input Bar */}
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <View style={[styles.inputBar, { backgroundColor: theme.background, borderTopColor: theme.cardBorder }]}>
+            <View
+              style={[
+                styles.inputBar,
+                { backgroundColor: colors.surface, borderTopColor: colors.border },
+              ]}
+            >
               <TextInput
-                style={[styles.textInput, { color: theme.text, backgroundColor: theme.card }]}
+                style={[
+                  styles.textInput,
+                  {
+                    color: colors.textPrimary,
+                    backgroundColor: colors.surfaceSecondary,
+                    borderColor: colors.border,
+                  },
+                  shadows.none,
+                ]}
                 placeholder="Add a comment..."
-                placeholderTextColor={theme.textSecondary}
+                placeholderTextColor={colors.textMuted}
                 value={inputContent}
                 onChangeText={setInputContent}
                 multiline
@@ -144,15 +163,18 @@ export function CommentModal({
               <TouchableOpacity
                 style={[
                   styles.sendButton,
+                  { backgroundColor: colors.accent },
+                  shadows.none,
                   (!inputContent.trim() || isSubmitting) && styles.sendButtonDisabled,
                 ]}
                 onPress={handleSubmit}
                 disabled={!inputContent.trim() || isSubmitting}
+                activeOpacity={0.8}
               >
                 {isSubmitting ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
+                  <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
                 )}
               </TouchableOpacity>
             </View>
@@ -166,113 +188,93 @@ export function CommentModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
     justifyContent: 'flex-end',
   },
   sheetContainer: {
     height: '75%',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
     overflow: 'hidden',
+    ...shadows.none,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: borders.thin,
+  },
+  headerTextCol: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    ...typography.heading2,
   },
   headerSub: {
-    fontSize: 12,
+    ...typography.caption,
     marginTop: 2,
-    maxWidth: 260,
+    maxWidth: 280,
   },
   closeButton: {
-    padding: 6,
+    padding: spacing.xs,
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     flexGrow: 1,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 48,
-  },
-  emptyText: {
-    fontSize: 13,
-    marginTop: 10,
-    textAlign: 'center',
-    maxWidth: 240,
   },
   commentRow: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: BrandColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarInitials: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 13,
+    paddingVertical: spacing.md,
+    borderBottomWidth: borders.thin,
   },
   commentBody: {
     flex: 1,
+    marginLeft: spacing.md,
   },
   nameRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   userName: {
+    ...typography.heading3,
     fontSize: 14,
-    fontWeight: '700',
   },
   commentTime: {
-    fontSize: 11,
+    ...typography.caption,
   },
   commentText: {
-    fontSize: 13,
-    lineHeight: 18,
+    ...typography.body,
+    fontSize: 14,
+    lineHeight: 20,
   },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderTopWidth: 1,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderTopWidth: borders.thin,
   },
   textInput: {
     flex: 1,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    borderRadius: radii.sm,
+    borderWidth: borders.thin,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     fontSize: 14,
-    maxHeight: 90,
+    maxHeight: 80,
   },
   sendButton: {
     width: 38,
     height: 38,
-    borderRadius: 19,
-    backgroundColor: BrandColors.primary,
+    borderRadius: radii.sm,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
+    marginLeft: spacing.sm,
   },
   sendButtonDisabled: {
     opacity: 0.4,

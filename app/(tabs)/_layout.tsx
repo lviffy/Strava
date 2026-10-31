@@ -2,52 +2,58 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Colors, { BrandColors } from '../../constants/Colors';
 import { useColorScheme } from '../../components/useColorScheme';
+import theme, { radii, borders, shadows } from '../../constants/theme';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'dark'];
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = theme.theme[colorScheme];
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: BrandColors.primary,
-        tabBarInactiveTintColor: theme.tabIconDefault,
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: theme.background,
-          borderTopColor: theme.cardBorder,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          borderTopWidth: borders.thin,
           height: Platform.OS === 'ios' ? 88 : 64,
           paddingBottom: Platform.OS === 'ios' ? 28 : 10,
           paddingTop: 8,
+          ...shadows.none,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
         },
         headerStyle: {
-          backgroundColor: theme.background,
+          backgroundColor: colors.surface,
+          borderBottomColor: colors.border,
+          borderBottomWidth: borders.thin,
+          ...shadows.none,
         },
         headerTitleStyle: {
-          color: theme.text,
+          color: colors.textPrimary,
           fontWeight: '700',
-          fontSize: 18,
+          fontSize: 17,
         },
-        headerTintColor: theme.text,
-      }}>
+        headerTintColor: colors.textPrimary,
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
           headerTitle: 'Strava',
           headerTitleStyle: {
-            color: BrandColors.primary,
+            color: colors.accent,
             fontWeight: '900',
-            fontSize: 22,
+            fontSize: 20,
             letterSpacing: -0.5,
           },
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color as string} />
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color as string} />
           ),
         }}
       />
@@ -57,7 +63,7 @@ export default function TabLayout() {
           title: 'Maps',
           headerTitle: 'Explore Routes',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'map' : 'map-outline'} size={24} color={color as string} />
+            <Ionicons name={focused ? 'map' : 'map-outline'} size={22} color={color as string} />
           ),
         }}
       />
@@ -67,11 +73,11 @@ export default function TabLayout() {
           title: 'Record',
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <View style={styles.recordTabButton}>
-              <Ionicons name="radio-button-on" size={28} color="#FFFFFF" />
+            <View style={[styles.recordTabButton, { backgroundColor: colors.accent, borderColor: colors.surface }]}>
+              <Ionicons name="radio-button-on" size={26} color="#FFFFFF" />
             </View>
           ),
-          tabBarLabel: () => null, // Center button has icon prominence
+          tabBarLabel: () => null,
         }}
       />
       <Tabs.Screen
@@ -80,7 +86,7 @@ export default function TabLayout() {
           title: 'Groups',
           headerTitle: 'Clubs & Challenges',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'people' : 'people-outline'} size={24} color={color as string} />
+            <Ionicons name={focused ? 'people' : 'people-outline'} size={22} color={color as string} />
           ),
         }}
       />
@@ -90,7 +96,7 @@ export default function TabLayout() {
           title: 'You',
           headerTitle: 'Profile & Progress',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color as string} />
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color as string} />
           ),
         }}
       />
@@ -100,17 +106,13 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   recordTabButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: BrandColors.primary,
+    width: 48,
+    height: 48,
+    borderRadius: radii.full,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -16,
-    shadowColor: BrandColors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 6,
+    marginTop: -14,
+    ...shadows.none,
   },
 });

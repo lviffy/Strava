@@ -4,15 +4,18 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
-  SafeAreaView,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { ActivityDao } from '../../database/ActivityDao';
-import Colors, { BrandColors } from '../../constants/Colors';
 import { useColorScheme } from '../../components/useColorScheme';
+import theme, { radii, spacing, typography, borders } from '../../constants/theme';
+import { ScreenContainer } from '../../components/ui/ScreenContainer';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { SectionHeader } from '../../components/ui/SectionHeader';
+import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
 
 interface Challenge {
   id: string;
@@ -21,7 +24,7 @@ interface Challenge {
   targetKm: number;
   currentKm: number;
   daysRemaining: number;
-  badgeIcon: any;
+  badgeIcon: keyof typeof Ionicons.glyphMap;
   joined: boolean;
 }
 
@@ -61,10 +64,13 @@ const INITIAL_CLUBS: Club[] = [
   },
 ];
 
+const TABS = ['Challenges', 'Clubs'] as const;
+type TabType = typeof TABS[number];
+
 export default function GroupsScreen() {
-  const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'dark'];
-  const [activeTab, setActiveTab] = useState<'Challenges' | 'Clubs'>('Challenges');
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = theme.theme[colorScheme];
+  const [activeTab, setActiveTab] = useState<TabType>('Challenges');
   const [clubs, setClubs] = useState<Club[]>(INITIAL_CLUBS);
 
   const [challenges, setChallenges] = useState<Challenge[]>([
@@ -75,7 +81,7 @@ export default function GroupsScreen() {
       targetKm: 50.0,
       currentKm: 0,
       daysRemaining: 18,
-      badgeIcon: 'medal',
+      badgeIcon: 'medal-outline',
       joined: true,
     },
     {
@@ -85,7 +91,7 @@ export default function GroupsScreen() {
       targetKm: 100.0,
       currentKm: 0,
       daysRemaining: 12,
-      badgeIcon: 'trophy',
+      badgeIcon: 'trophy-outline',
       joined: true,
     },
     {
@@ -95,7 +101,7 @@ export default function GroupsScreen() {
       targetKm: 10.0,
       currentKm: 0,
       daysRemaining: 2,
-      badgeIcon: 'ribbon',
+      badgeIcon: 'ribbon-outline',
       joined: false,
     },
   ]);
@@ -145,7 +151,7 @@ export default function GroupsScreen() {
 
   const toggleClubJoin = (id: string) => {
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {}
     setClubs((prev) =>
       prev.map((cl) => {
@@ -163,61 +169,19 @@ export default function GroupsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-
-      {/* Top Segmented Control */}
-      <View style={styles.segmentContainer}>
-        <View
-          style={[
-            styles.segmentedControl,
-            { backgroundColor: theme.card, borderColor: theme.cardBorder },
-          ]}
-        >
-          <TouchableOpacity
-            style={[
-              styles.segmentButton,
-              activeTab === 'Challenges' && { backgroundColor: BrandColors.primary },
-            ]}
-            onPress={() => setActiveTab('Challenges')}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                { color: theme.text },
-                activeTab === 'Challenges' && { color: '#FFFFFF', fontWeight: '800' },
-              ]}
-            >
-              Challenges
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.segmentButton,
-              activeTab === 'Clubs' && { backgroundColor: BrandColors.primary },
-            ]}
-            onPress={() => setActiveTab('Clubs')}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                { color: theme.text },
-                activeTab === 'Clubs' && { color: '#FFFFFF', fontWeight: '800' },
-              ]}
-            >
-              Clubs
-            </Text>
-          </TouchableOpacity>
-        </View>
+    <ScreenContainer>
+      <View style={styles.tabContainer}>
+        <SegmentedControl
+          options={TABS as unknown as string[]}
+          selectedOption={activeTab}
+          onSelect={(tab) => setActiveTab(tab as TabType)}
+        />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {activeTab === 'Challenges' && (
           <View>
-            <Text style={[styles.sectionHeading, { color: theme.text }]}>
-              Active Monthly Challenges
-            </Text>
+            <SectionHeader title="ACTIVE MONTHLY CHALLENGES" />
             {challenges.map((challenge) => {
               const progressPct = Math.min(
                 100,
@@ -226,81 +190,57 @@ export default function GroupsScreen() {
               const isCompleted = progressPct >= 100;
 
               return (
-                <View
-                  key={challenge.id}
-                  style={[
-                    styles.challengeCard,
-                    { backgroundColor: theme.card, borderColor: theme.cardBorder },
-                  ]}
-                >
-                  <View style={styles.challengeHeader}>
-                    <View style={styles.badgeCircle}>
+                <SurfaceCard key={challenge.id}>
+                  <View style={styles.cardHeader}>
+                    <View style={[styles.badgeIconWrapper, { backgroundColor: colors.surfaceSecondary }]}>
                       <Ionicons
                         name={challenge.badgeIcon}
-                        size={24}
-                        color={isCompleted ? BrandColors.primary : '#888888'}
+                        size={22}
+                        color={isCompleted ? colors.accent : colors.textSecondary}
                       />
                     </View>
-                    <View style={styles.challengeMeta}>
-                      <Text style={[styles.challengeTitle, { color: theme.text }]}>
+                    <View style={styles.cardMeta}>
+                      <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                         {challenge.title}
                       </Text>
-                      <Text style={[styles.daysLeft, { color: theme.textSecondary }]}>
+                      <Text style={[styles.cardSub, { color: colors.textSecondary }]}>
                         {isCompleted
-                          ? 'Completed! 🏆'
+                          ? 'Goal Completed'
                           : `${challenge.daysRemaining} days remaining`}
                       </Text>
                     </View>
 
-                    <TouchableOpacity
-                      style={[
-                        styles.joinChallengeBtn,
-                        challenge.joined && styles.joinedChallengeBtn,
-                      ]}
+                    <Button
+                      title={challenge.joined ? 'Joined' : 'Join'}
+                      size="sm"
+                      variant={challenge.joined ? 'secondary' : 'primary'}
                       onPress={() => toggleChallengeJoin(challenge.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.joinChallengeBtnText,
-                          challenge.joined && styles.joinedChallengeBtnText,
-                        ]}
-                      >
-                        {challenge.joined ? 'Joined' : 'Join'}
-                      </Text>
-                    </TouchableOpacity>
+                    />
                   </View>
 
                   {/* Progress Bar */}
-                  <View style={styles.progressTrack}>
+                  <View style={[styles.progressTrack, { backgroundColor: colors.surfaceSecondary }]}>
                     <View
                       style={[
                         styles.progressBar,
                         {
                           width: `${progressPct}%`,
-                          backgroundColor: isCompleted
-                            ? BrandColors.gpsGreen
-                            : BrandColors.primary,
+                          backgroundColor: isCompleted ? colors.success : colors.accent,
                         },
                       ]}
                     />
                   </View>
 
                   <View style={styles.progressNumbersRow}>
-                    <Text style={[styles.progressNumbers, { color: theme.text }]}>
+                    <Text style={[styles.progressNumbers, { color: colors.textPrimary }]}>
                       {challenge.currentKm.toFixed(1)} / {challenge.targetKm} km
                     </Text>
-                    <Text
-                      style={[
-                        styles.progressPercent,
-                        {
-                          color: isCompleted ? BrandColors.gpsGreen : BrandColors.primary,
-                        },
-                      ]}
-                    >
-                      {progressPct}%
-                    </Text>
+                    <Badge
+                      label={`${progressPct}%`}
+                      variant={isCompleted ? 'success' : 'neutral'}
+                    />
                   </View>
-                </View>
+                </SurfaceCard>
               );
             })}
           </View>
@@ -308,207 +248,98 @@ export default function GroupsScreen() {
 
         {activeTab === 'Clubs' && (
           <View>
-            <Text style={[styles.sectionHeading, { color: theme.text }]}>
-              Your Clubs & Community
-            </Text>
+            <SectionHeader title="YOUR CLUBS & COMMUNITY" />
             {clubs.map((club) => (
-              <View
-                key={club.id}
-                style={[
-                  styles.clubCard,
-                  { backgroundColor: theme.card, borderColor: theme.cardBorder },
-                ]}
-              >
-                <View style={styles.clubAvatar}>
-                  <Ionicons name="shield" size={24} color="#FFFFFF" />
-                </View>
-                <View style={styles.clubMeta}>
-                  <Text style={[styles.clubName, { color: theme.text }]}>{club.name}</Text>
-                  <Text style={[styles.clubSub, { color: theme.textSecondary }]}>
-                    {club.sportType} • {club.memberCount} members
-                  </Text>
-                  <Text style={[styles.clubLocation, { color: theme.textSecondary }]}>
-                    {club.location}
-                  </Text>
-                </View>
+              <SurfaceCard key={club.id}>
+                <View style={styles.cardHeader}>
+                  <View style={[styles.badgeIconWrapper, { backgroundColor: colors.surfaceSecondary }]}>
+                    <Ionicons name="shield-outline" size={22} color={colors.accent} />
+                  </View>
+                  <View style={styles.cardMeta}>
+                    <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                      {club.name}
+                    </Text>
+                    <Text style={[styles.cardSub, { color: colors.textSecondary }]}>
+                      {club.sportType} • {club.memberCount} members
+                    </Text>
+                    <Text style={[styles.locationText, { color: colors.textMuted }]}>
+                      {club.location}
+                    </Text>
+                  </View>
 
-                <TouchableOpacity
-                  style={[
-                    styles.joinButton,
-                    club.isMember && {
-                      backgroundColor: 'transparent',
-                      borderColor: theme.cardBorder,
-                      borderWidth: 1,
-                    },
-                  ]}
-                  onPress={() => toggleClubJoin(club.id)}
-                >
-                  <Text
-                    style={[
-                      styles.joinButtonText,
-                      club.isMember && { color: theme.textSecondary },
-                    ]}
-                  >
-                    {club.isMember ? 'Joined' : 'Join'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                  <Button
+                    title={club.isMember ? 'Joined' : 'Join'}
+                    size="sm"
+                    variant={club.isMember ? 'secondary' : 'primary'}
+                    onPress={() => toggleClubJoin(club.id)}
+                  />
+                </View>
+              </SurfaceCard>
             ))}
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  segmentContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  segmentedControl: {
-    flexDirection: 'row',
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 3,
-  },
-  segmentButton: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 9,
-  },
-  segmentText: {
-    fontSize: 13,
-    fontWeight: '600',
+  tabContainer: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.huge,
   },
-  sectionHeading: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 14,
-    marginTop: 6,
-  },
-  challengeCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 14,
-  },
-  challengeHeader: {
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: spacing.md,
   },
-  badgeCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(252, 82, 0, 0.12)',
+  badgeIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.sm,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: spacing.md,
   },
-  challengeMeta: {
+  cardMeta: {
     flex: 1,
+    marginRight: spacing.sm,
   },
-  challengeTitle: {
-    fontSize: 15,
-    fontWeight: '800',
+  cardTitle: {
+    ...typography.heading3,
   },
-  daysLeft: {
-    fontSize: 12,
+  cardSub: {
+    ...typography.caption,
     marginTop: 2,
   },
-  joinChallengeBtn: {
-    backgroundColor: BrandColors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  joinedChallengeBtn: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#38383A',
-  },
-  joinChallengeBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  joinedChallengeBtnText: {
-    color: '#8E8E93',
+  locationText: {
+    ...typography.caption,
+    fontSize: 10,
+    marginTop: 1,
   },
   progressTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(150,150,150,0.2)',
+    height: 6,
+    borderRadius: radii.xs,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginVertical: spacing.sm,
   },
   progressBar: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: radii.xs,
   },
   progressNumbersRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.xs,
   },
   progressNumbers: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  progressPercent: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  clubCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 12,
-  },
-  clubAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: BrandColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  clubMeta: {
-    flex: 1,
-  },
-  clubName: {
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  clubSub: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  clubLocation: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  joinButton: {
-    backgroundColor: BrandColors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 8,
-  },
-  joinButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    ...typography.caption,
     fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
 });

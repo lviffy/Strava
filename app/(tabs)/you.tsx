@@ -4,10 +4,7 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
-  SafeAreaView,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -19,15 +16,26 @@ import { SyncManager } from '../../services/SyncManager';
 import {
   formatDuration,
   formatDistance,
-  formatPace,
 } from '../../features/recording/Calculations';
-import Colors, { BrandColors } from '../../constants/Colors';
 import { useColorScheme } from '../../components/useColorScheme';
+import theme, { radii, spacing, typography, borders } from '../../constants/theme';
+import { ScreenContainer } from '../../components/ui/ScreenContainer';
+import { ScreenHeader } from '../../components/ui/ScreenHeader';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { SectionHeader } from '../../components/ui/SectionHeader';
+import { Button } from '../../components/ui/Button';
+import { IconButton } from '../../components/ui/IconButton';
+import { Badge } from '../../components/ui/Badge';
+import { AthleteAvatar } from '../../components/activity/AthleteAvatar';
+import { MetricGrid } from '../../components/activity/MetricGrid';
+import { MetricItem } from '../../components/activity/MetricItem';
+import { ActivityCard } from '../../components/activity/ActivityCard';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function YouProfileScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'dark'];
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = theme.theme[colorScheme];
   const { user, logout } = useAuthStore();
 
   const [savedActivities, setSavedActivities] = useState<LocalActivity[]>([]);
@@ -87,16 +95,6 @@ export default function YouProfileScreen() {
     ]);
   };
 
-  // Calculate cumulative stats
-  const totalDistanceMeters = savedActivities.reduce((acc, a) => acc + a.distance_meters, 0);
-  const totalMovingTimeSeconds = savedActivities.reduce((acc, a) => acc + a.moving_time_seconds, 0);
-  const totalElevationGain = savedActivities.reduce((acc, a) => acc + a.elevation_gain_meters, 0);
-
-  // Weekly Goal Progress (Assume 30 km goal)
-  const weeklyGoalKm = 30.0;
-  const currentWeekKm = totalDistanceMeters / 1000;
-  const goalProgressPct = Math.min(100, Math.round((currentWeekKm / weeklyGoalKm) * 100));
-
   const handleResumeUnfinished = async () => {
     if (!unfinishedWorkout) return;
     try {
@@ -132,147 +130,171 @@ export default function YouProfileScreen() {
     ]);
   };
 
-  // User details
+  // Cumulative Stats
+  const totalDistanceMeters = savedActivities.reduce((acc, a) => acc + a.distance_meters, 0);
+  const totalMovingTimeSeconds = savedActivities.reduce((acc, a) => acc + a.moving_time_seconds, 0);
+  const totalElevationGain = savedActivities.reduce((acc, a) => acc + a.elevation_gain_meters, 0);
+
+  // Weekly Goal Progress (Assume 30 km goal)
+  const weeklyGoalKm = 30.0;
+  const currentWeekKm = totalDistanceMeters / 1000;
+  const goalProgressPct = Math.min(100, Math.round((currentWeekKm / weeklyGoalKm) * 100));
+
   const athleteFullName = user ? `${user.firstName} ${user.lastName}` : 'Athlete';
   const athleteCity = user?.city || 'San Francisco, CA';
-  const initials = user
-    ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase()
-    : 'AT';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Top Action Bar */}
-        <View style={styles.topBar}>
-          <Text style={[styles.topBarTitle, { color: theme.text }]}>You</Text>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton} activeOpacity={0.7}>
-            <Ionicons name="log-out-outline" size={22} color="#FF453A" />
-          </TouchableOpacity>
-        </View>
+    <ScreenContainer>
+      <ScreenHeader
+        title="You"
+        rightAction={
+          <IconButton
+            icon={<Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />}
+            onPress={handleLogout}
+          />
+        }
+      />
 
-        {/* Unfinished Workout Recovery Card */}
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Interrupted Workout Recovery Card */}
         {unfinishedWorkout && (
-          <View style={styles.recoveryAlertCard}>
+          <SurfaceCard style={[styles.recoveryCard, { borderColor: colors.warning }]}>
             <View style={styles.recoveryHeader}>
-              <Ionicons name="warning" size={22} color="#FF9500" />
-              <Text style={styles.recoveryTitle}>Interrupted Workout Detected</Text>
+              <Badge label="RECOVERY" variant="warning" />
+              <Text style={[styles.recoveryTitle, { color: colors.warning }]}>
+                Interrupted {unfinishedWorkout.sport_type}
+              </Text>
             </View>
-            <Text style={styles.recoverySubtext}>
-              A {formatDistance(unfinishedWorkout.distance_meters)} km {unfinishedWorkout.sport_type} was stopped
-              unexpectedly. You can recover and resume tracking.
+            <Text style={[styles.recoverySubtext, { color: colors.textSecondary }]}>
+              A {formatDistance(unfinishedWorkout.distance_meters)} km workout was stopped unexpectedly. You can recover and resume tracking.
             </Text>
             <View style={styles.recoveryButtonsRow}>
-              <TouchableOpacity style={styles.resumeAlertButton} onPress={handleResumeUnfinished}>
-                <Text style={styles.resumeAlertButtonText}>Resume Workout</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.discardAlertButton} onPress={handleDiscardUnfinished}>
-                <Text style={styles.discardAlertButtonText}>Discard</Text>
-              </TouchableOpacity>
+              <Button
+                title="Resume Workout"
+                size="sm"
+                variant="primary"
+                onPress={handleResumeUnfinished}
+                style={{ marginRight: spacing.sm }}
+              />
+              <Button
+                title="Discard"
+                size="sm"
+                variant="ghost"
+                onPress={handleDiscardUnfinished}
+              />
             </View>
-          </View>
+          </SurfaceCard>
         )}
 
-        {/* Profile Header */}
-        <View style={styles.profileHeader}>
-          <View style={[styles.profileAvatar, { backgroundColor: BrandColors.primary }]}>
-            <Text style={styles.avatarInitials}>{initials}</Text>
+        {/* Profile Identity Card */}
+        <SurfaceCard style={styles.profileCard}>
+          <View style={styles.avatarRow}>
+            <AthleteAvatar name={athleteFullName} size="lg" />
+            <View style={styles.athleteInfo}>
+              <Text style={[styles.athleteName, { color: colors.textPrimary }]}>
+                {athleteFullName}
+              </Text>
+              <Text style={[styles.athleteLocation, { color: colors.textSecondary }]}>
+                {athleteCity} {user?.bio ? `• ${user.bio}` : ''}
+              </Text>
+            </View>
           </View>
-          <Text style={[styles.athleteName, { color: theme.text }]}>{athleteFullName}</Text>
-          <Text style={[styles.athleteLocation, { color: theme.textSecondary }]}>
-            {athleteCity} {user?.bio ? `• ${user.bio}` : ''}
-          </Text>
 
           {/* Social Stats Row */}
-          <View style={styles.socialStatsRow}>
-            <View style={styles.socialStatCol}>
-              <Text style={[styles.socialStatVal, { color: theme.text }]}>
-                {user?._count?.following ?? 12}
-              </Text>
-              <Text style={[styles.socialStatLabel, { color: theme.textSecondary }]}>Following</Text>
-            </View>
-            <View style={styles.socialStatCol}>
-              <Text style={[styles.socialStatVal, { color: theme.text }]}>
-                {user?._count?.followers ?? 34}
-              </Text>
-              <Text style={[styles.socialStatLabel, { color: theme.textSecondary }]}>Followers</Text>
-            </View>
-            <View style={styles.socialStatCol}>
-              <Text style={[styles.socialStatVal, { color: theme.text }]}>{savedActivities.length}</Text>
-              <Text style={[styles.socialStatLabel, { color: theme.textSecondary }]}>Activities</Text>
-            </View>
-          </View>
-        </View>
+          <MetricGrid bordered style={{ marginTop: spacing.md, paddingVertical: spacing.sm }}>
+            <MetricItem
+              label="Following"
+              value={user?._count?.following ?? 12}
+              size="small"
+              align="center"
+            />
+            <MetricItem
+              label="Followers"
+              value={user?._count?.followers ?? 34}
+              size="small"
+              align="center"
+            />
+            <MetricItem
+              label="Activities"
+              value={savedActivities.length}
+              size="small"
+              align="center"
+            />
+          </MetricGrid>
+        </SurfaceCard>
 
         {/* Cloud Sync Status Bar */}
-        <View style={[styles.syncStatusBar, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+        <SurfaceCard style={styles.syncCard}>
           <View style={styles.syncLeft}>
             <Ionicons
               name={pendingSyncCount > 0 ? 'cloud-upload-outline' : 'cloud-done-outline'}
-              size={20}
-              color={pendingSyncCount > 0 ? BrandColors.primary : '#34C759'}
+              size={18}
+              color={pendingSyncCount > 0 ? colors.accent : colors.success}
             />
-            <Text style={[styles.syncStatusText, { color: theme.text }]}>
+            <Text style={[styles.syncStatusText, { color: colors.textPrimary }]}>
               {pendingSyncCount > 0
                 ? `${pendingSyncCount} ${pendingSyncCount === 1 ? 'activity' : 'activities'} waiting to sync`
                 : 'All activities synced to cloud'}
             </Text>
           </View>
           {pendingSyncCount > 0 && (
-            <TouchableOpacity
-              style={styles.syncButton}
+            <Button
+              title="Sync Now"
+              size="sm"
+              variant="secondary"
+              isLoading={isSyncing}
               onPress={handleSyncNow}
-              disabled={isSyncing}
-              activeOpacity={0.8}
-            >
-              {isSyncing ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.syncButtonText}>Sync Now</Text>
-              )}
-            </TouchableOpacity>
+            />
           )}
-        </View>
+        </SurfaceCard>
 
-        {/* Weekly Progress Ring Card */}
-        <View style={[styles.weeklyGoalCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+        {/* Weekly Progress Card */}
+        <SurfaceCard>
           <View style={styles.goalHeaderRow}>
             <View>
-              <Text style={[styles.cardHeading, { color: theme.text }]}>Weekly Goal</Text>
-              <Text style={[styles.goalSub, { color: theme.textSecondary }]}>
+              <SectionHeader title="WEEKLY GOAL" />
+              <Text style={[styles.goalSub, { color: colors.textSecondary }]}>
                 {currentWeekKm.toFixed(1)} / {weeklyGoalKm} km completed
               </Text>
             </View>
-            <View style={styles.goalPercentBadge}>
-              <Text style={styles.goalPercentText}>{goalProgressPct}%</Text>
-            </View>
+            <Badge label={`${goalProgressPct}%`} variant="brand" />
           </View>
 
-          <View style={styles.goalTrack}>
-            <View style={[styles.goalFill, { width: `${goalProgressPct}%` }]} />
+          <View style={[styles.goalTrack, { backgroundColor: colors.surfaceSecondary }]}>
+            <View
+              style={[
+                styles.goalFill,
+                { width: `${goalProgressPct}%`, backgroundColor: colors.accent },
+              ]}
+            />
           </View>
 
-          <View style={styles.summaryTotalsRow}>
-            <View style={styles.totalCol}>
-              <Text style={[styles.totalNumber, { color: theme.text }]}>{formatDistance(totalDistanceMeters)} km</Text>
-              <Text style={[styles.totalSub, { color: theme.textSecondary }]}>Total Distance</Text>
-            </View>
-            <View style={styles.totalCol}>
-              <Text style={[styles.totalNumber, { color: theme.text }]}>{formatDuration(totalMovingTimeSeconds)}</Text>
-              <Text style={[styles.totalSub, { color: theme.textSecondary }]}>Moving Time</Text>
-            </View>
-            <View style={styles.totalCol}>
-              <Text style={[styles.totalNumber, { color: theme.text }]}>{Math.round(totalElevationGain)} m</Text>
-              <Text style={[styles.totalSub, { color: theme.textSecondary }]}>Elevation</Text>
-            </View>
-          </View>
-        </View>
+          <MetricGrid bordered={false} style={{ marginTop: spacing.sm, paddingBottom: 0 }}>
+            <MetricItem
+              label="Distance"
+              value={formatDistance(totalDistanceMeters)}
+              unit="km"
+              size="medium"
+            />
+            <MetricItem
+              label="Time"
+              value={formatDuration(totalMovingTimeSeconds)}
+              size="medium"
+            />
+            <MetricItem
+              label="Elevation"
+              value={`+${Math.round(totalElevationGain)}`}
+              unit="m"
+              size="medium"
+            />
+          </MetricGrid>
+        </SurfaceCard>
 
         {/* 4-Week Activity Heatmap */}
-        <View style={[styles.heatmapCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
-          <Text style={[styles.cardHeading, { color: theme.text, marginBottom: 12 }]}>Activity Log (Last 4 Weeks)</Text>
+        <SurfaceCard>
+          <SectionHeader title="ACTIVITY LOG (LAST 4 WEEKS)" />
           <View style={styles.heatmapGrid}>
             {Array.from({ length: 28 }).map((_, index) => {
-              // Mark days with activity
               const hasActivity = index % 3 === 0 || index % 5 === 0;
               return (
                 <View
@@ -280,8 +302,8 @@ export default function YouProfileScreen() {
                   style={[
                     styles.heatmapSquare,
                     {
-                      backgroundColor: hasActivity ? BrandColors.primary : BrandColors.surfaceCardDark,
-                      opacity: hasActivity ? 0.9 : 0.4,
+                      backgroundColor: hasActivity ? colors.accent : colors.surfaceSecondary,
+                      borderColor: colors.borderSubtle,
                     },
                   ]}
                 />
@@ -289,387 +311,159 @@ export default function YouProfileScreen() {
             })}
           </View>
           <View style={styles.heatmapLegend}>
-            <Text style={[styles.legendText, { color: theme.textSecondary }]}>Less</Text>
-            <View style={[styles.legendDot, { backgroundColor: BrandColors.surfaceCardDark }]} />
-            <View style={[styles.legendDot, { backgroundColor: BrandColors.primary, opacity: 0.5 }]} />
-            <View style={[styles.legendDot, { backgroundColor: BrandColors.primary }]} />
-            <Text style={[styles.legendText, { color: theme.textSecondary }]}>More</Text>
+            <Text style={[styles.legendText, { color: colors.textMuted }]}>Less</Text>
+            <View style={[styles.legendDot, { backgroundColor: colors.surfaceSecondary }]} />
+            <View style={[styles.legendDot, { backgroundColor: colors.accent, opacity: 0.5 }]} />
+            <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
+            <Text style={[styles.legendText, { color: colors.textMuted }]}>More</Text>
           </View>
-        </View>
+        </SurfaceCard>
 
-        {/* Activities History Section */}
-        <View style={styles.historySection}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Activities</Text>
-          {savedActivities.length === 0 ? (
-            <View style={styles.noActivitiesBox}>
-              <Ionicons name="trail-sign-outline" size={36} color={theme.textSecondary} />
-              <Text style={[styles.noActivitiesText, { color: theme.textSecondary }]}>
-                No saved activities yet. Hit Record to log your first run or ride!
-              </Text>
-            </View>
-          ) : (
-            savedActivities.map((act) => (
-              <TouchableOpacity
-                key={act.id}
-                style={[styles.historyCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
-                onPress={() => router.push(`/activity/${act.id}`)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.historyCardHeader}>
-                  <View style={styles.sportBadge}>
-                    <Text style={styles.sportBadgeText}>{act.sport_type.toUpperCase()}</Text>
-                  </View>
-                  <View style={styles.historyDateRow}>
-                    {act.sync_status === 'SYNCED' && (
-                      <Ionicons name="cloud-done" size={14} color="#34C759" style={{ marginRight: 6 }} />
-                    )}
-                    <Text style={[styles.historyDate, { color: theme.textSecondary }]}>
-                      {new Date(act.start_timestamp).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </Text>
-                  </View>
-                </View>
-
-                <Text style={[styles.historyTitle, { color: theme.text }]}>{act.name}</Text>
-
-                <View style={styles.historyStatsRow}>
-                  <Text style={[styles.historyStat, { color: theme.text }]}>
-                    <Text style={styles.boldText}>{formatDistance(act.distance_meters)}</Text> km
-                  </Text>
-                  <Text style={[styles.historyStat, { color: theme.text }]}>
-                    <Text style={styles.boldText}>
-                      {formatPace(
-                        act.distance_meters > 0
-                          ? act.moving_time_seconds / (act.distance_meters / 1000)
-                          : null
-                      )}
-                    </Text>{' '}
-                    /km
-                  </Text>
-                  <Text style={[styles.historyStat, { color: theme.text }]}>
-                    <Text style={styles.boldText}>{formatDuration(act.moving_time_seconds)}</Text>
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
+        {/* Recent Activities Section */}
+        <SectionHeader title="RECENT ACTIVITIES" />
+        {savedActivities.length === 0 ? (
+          <EmptyState
+            iconName="trail-sign-outline"
+            title="No saved activities"
+            description="Hit Record to log your first run or ride!"
+            actionTitle="Start Workout"
+            onAction={() => router.push('/(tabs)/record')}
+          />
+        ) : (
+          savedActivities.map((act) => (
+            <ActivityCard
+              key={act.id}
+              activity={{
+                id: act.id,
+                athleteName: athleteFullName,
+                athleteAvatarColor: colors.accent,
+                title: act.name,
+                sportType: act.sport_type,
+                distanceMeters: act.distance_meters,
+                movingTimeSeconds: act.moving_time_seconds,
+                elevationGainMeters: act.elevation_gain_meters,
+                timestamp: act.start_timestamp,
+                isLocalOnly: act.sync_status === 'PENDING',
+              }}
+              onPress={() => router.push(`/activity/${act.id}`)}
+              showSocialActions={false}
+            />
+          ))
+        )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   scrollContent: {
-    paddingBottom: 40,
+    padding: spacing.lg,
+    paddingBottom: spacing.huge,
   },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  topBarTitle: {
-    fontSize: 24,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  logoutButton: {
-    padding: 8,
-  },
-  recoveryAlertCard: {
-    backgroundColor: 'rgba(255, 149, 0, 0.12)',
-    borderColor: '#FF9500',
-    borderWidth: 1,
-    borderRadius: 16,
-    margin: 16,
-    padding: 16,
+  recoveryCard: {
+    padding: spacing.md,
   },
   recoveryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
   recoveryTitle: {
-    color: '#FF9500',
-    fontSize: 16,
-    fontWeight: '800',
-    marginLeft: 8,
+    ...typography.heading3,
+    marginLeft: spacing.sm,
   },
   recoverySubtext: {
-    color: '#CCCCCC',
-    fontSize: 13,
+    ...typography.bodySmall,
     lineHeight: 18,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   recoveryButtonsRow: {
     flexDirection: 'row',
-  },
-  resumeAlertButton: {
-    backgroundColor: '#FF9500',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    marginRight: 10,
-  },
-  resumeAlertButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  discardAlertButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  discardAlertButtonText: {
-    color: '#8E8E93',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  profileHeader: {
     alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
   },
-  profileAvatar: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    justifyContent: 'center',
+  profileCard: {
+    padding: spacing.lg,
+  },
+  avatarRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
-  avatarInitials: {
-    color: '#FFFFFF',
-    fontSize: 26,
-    fontWeight: '800',
+  athleteInfo: {
+    flex: 1,
+    marginLeft: spacing.md,
   },
   athleteName: {
-    fontSize: 22,
-    fontWeight: '800',
+    ...typography.heading2,
   },
   athleteLocation: {
-    fontSize: 13,
-    marginTop: 4,
-  },
-  socialStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginTop: 20,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: 'rgba(150,150,150,0.15)',
-  },
-  socialStatCol: {
-    alignItems: 'center',
-  },
-  socialStatVal: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  socialStatLabel: {
-    fontSize: 12,
+    ...typography.caption,
     marginTop: 2,
   },
-  syncStatusBar: {
+  syncCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   syncLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    marginRight: spacing.sm,
   },
   syncStatusText: {
-    fontSize: 12,
+    ...typography.caption,
     fontWeight: '600',
-    marginLeft: 8,
-  },
-  syncButton: {
-    backgroundColor: BrandColors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  syncButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  weeklyGoalCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 18,
+    marginLeft: spacing.sm,
   },
   goalHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  cardHeading: {
-    fontSize: 17,
-    fontWeight: '800',
+    alignItems: 'flex-start',
+    marginBottom: spacing.xs,
   },
   goalSub: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  goalPercentBadge: {
-    backgroundColor: 'rgba(252, 82, 0, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  goalPercentText: {
-    color: BrandColors.primary,
-    fontSize: 13,
-    fontWeight: '800',
+    ...typography.caption,
+    marginTop: -spacing.xs,
   },
   goalTrack: {
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: 'rgba(150,150,150,0.2)',
+    height: 6,
+    borderRadius: radii.xs,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginVertical: spacing.md,
   },
   goalFill: {
     height: '100%',
-    backgroundColor: BrandColors.primary,
-    borderRadius: 5,
-  },
-  summaryTotalsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderColor: 'rgba(150,150,150,0.15)',
-  },
-  totalCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  totalNumber: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  totalSub: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  heatmapCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 18,
+    borderRadius: radii.xs,
   },
   heatmapGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 10,
+    marginVertical: spacing.sm,
   },
   heatmapSquare: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 2,
+    borderWidth: borders.thin,
+    margin: 3,
   },
   heatmapLegend: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 4,
-    marginTop: 6,
+    marginTop: spacing.xs,
   },
   legendText: {
+    ...typography.caption,
     fontSize: 10,
+    marginHorizontal: 4,
   },
   legendDot: {
-    width: 10,
-    height: 10,
+    width: 8,
+    height: 8,
     borderRadius: 2,
-  },
-  historySection: {
-    paddingHorizontal: 16,
-    marginTop: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 12,
-  },
-  noActivitiesBox: {
-    alignItems: 'center',
-    paddingVertical: 36,
-  },
-  noActivitiesText: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 10,
-    paddingHorizontal: 24,
-  },
-  historyCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 12,
-  },
-  historyCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  sportBadge: {
-    backgroundColor: 'rgba(252, 82, 0, 0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  sportBadgeText: {
-    color: BrandColors.primary,
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  historyDateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  historyDate: {
-    fontSize: 12,
-  },
-  historyTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  historyStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  historyStat: {
-    fontSize: 13,
-  },
-  boldText: {
-    fontWeight: '800',
+    marginHorizontal: 2,
   },
 });

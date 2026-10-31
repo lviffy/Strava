@@ -3,25 +3,26 @@ import {
   StyleSheet,
   View,
   Text,
-  TextInput,
   TouchableOpacity,
-  SafeAreaView,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../../store/useAuthStore';
-import { BrandColors } from '../../constants/Colors';
-
 import { ApiClient } from '../../services/ApiClient';
+import { useColorScheme } from '../../components/useColorScheme';
+import theme, { radii, spacing, typography, borders } from '../../constants/theme';
+import { ScreenContainer } from '../../components/ui/ScreenContainer';
+import { InputText } from '../../components/ui/InputText';
+import { Button } from '../../components/ui/Button';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = theme.theme[colorScheme];
   const { login, loginAsDemoAthlete, isLoading, error, clearError } = useAuthStore();
 
   const [email, setEmail] = useState('');
@@ -29,9 +30,7 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
-    if (!email.trim() || !password) {
-      return;
-    }
+    if (!email.trim() || !password) return;
     clearError();
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -64,274 +63,186 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="light" />
+    <ScreenContainer>
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Logo & Header */}
           <View style={styles.headerContainer}>
-            <View style={styles.logoBadge}>
-              <Ionicons name="flame" size={38} color="#FFFFFF" />
+            <View style={[styles.logoBadge, { backgroundColor: colors.accent }]}>
+              <Ionicons name="flame" size={32} color="#FFFFFF" />
             </View>
-            <Text style={styles.brandTitle}>STRAVA</Text>
-            <Text style={styles.subtitle}>Record. Connect. Compete.</Text>
+            <Text style={[styles.brandTitle, { color: colors.textPrimary }]}>STRAVA</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Record. Connect. Compete.
+            </Text>
           </View>
 
           {/* Error Banner */}
           {error ? (
-            <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle" size={18} color="#FF453A" style={{ marginRight: 8 }} />
-              <Text style={styles.errorText}>{error}</Text>
+            <View style={[styles.errorBanner, { backgroundColor: colors.surfaceSecondary, borderColor: colors.error }]}>
+              <Ionicons name="alert-circle-outline" size={18} color={colors.error} style={{ marginRight: 8 }} />
+              <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
             </View>
           ) : null}
 
           {/* Form Inputs */}
           <View style={styles.formContainer}>
-            <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="mail-outline" size={20} color={BrandColors.textSecondaryDark} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="athlete@example.com"
-                placeholderTextColor="#636366"
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  if (error) clearError();
-                }}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                autoCorrect={false}
-              />
-            </View>
+            <InputText
+              label="Email Address"
+              placeholder="athlete@example.com"
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (error) clearError();
+              }}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoCorrect={false}
+              leftIcon={<Ionicons name="mail-outline" size={18} color={colors.textSecondary} />}
+            />
 
-            <Text style={[styles.inputLabel, { marginTop: 18 }]}>PASSWORD</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color={BrandColors.textSecondaryDark} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your password"
-                placeholderTextColor="#636366"
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  if (error) clearError();
-                }}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeButton}
-              >
+            <InputText
+              label="Password"
+              placeholder="Enter your password"
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (error) clearError();
+              }}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              leftIcon={<Ionicons name="lock-closed-outline" size={18} color={colors.textSecondary} />}
+              rightIcon={
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={BrandColors.textSecondaryDark}
+                  size={18}
+                  color={colors.textSecondary}
                 />
-              </TouchableOpacity>
-            </View>
+              }
+              onRightIconPress={() => setShowPassword(!showPassword)}
+            />
 
             {/* Main Login Button */}
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                (!email || !password || isLoading) && styles.buttonDisabled,
-              ]}
+            <Button
+              title="LOG IN"
+              size="lg"
+              variant="primary"
               onPress={handleLogin}
               disabled={!email || !password || isLoading}
-              activeOpacity={0.8}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={styles.primaryButtonText}>Log In</Text>
-              )}
-            </TouchableOpacity>
+              isLoading={isLoading}
+              style={styles.actionBtn}
+            />
 
             {/* Quick Demo Sign In */}
-            <TouchableOpacity
-              style={styles.demoButton}
+            <Button
+              title="DEMO ATHLETE (ALEX RIVERA)"
+              size="md"
+              variant="secondary"
               onPress={handleDemoSignIn}
               disabled={isLoading}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="flash" size={18} color={BrandColors.primary} style={{ marginRight: 8 }} />
-              <Text style={styles.demoButtonText}>Quick Demo Sign-In (Alex Rivera)</Text>
-            </TouchableOpacity>
+              icon={<Ionicons name="flash-outline" size={18} color={colors.accent} />}
+              style={styles.actionBtn}
+            />
           </View>
 
           {/* Footer Register Link */}
           <View style={styles.footerContainer}>
-            <Text style={styles.footerText}>Don't have an account?</Text>
+            <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+              Don't have an athlete account?
+            </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/register')} style={styles.linkTouch}>
-              <Text style={styles.linkText}> Sign Up</Text>
+              <Text style={[styles.linkText, { color: colors.accent }]}> Sign Up</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={{ alignItems: 'center', marginTop: 18 }}>
-            <Text style={{ color: '#636366', fontSize: 11 }}>
+          <View style={styles.serverInfo}>
+            <Text style={[styles.serverText, { color: colors.textMuted }]}>
               Server: {ApiClient.getBaseUrl()}
             </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: BrandColors.backgroundDark,
-  },
   keyboardContainer: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 32,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xxl,
   },
   headerContainer: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: spacing.xxl,
   },
   logoBadge: {
-    width: 68,
-    height: 68,
-    borderRadius: 20,
-    backgroundColor: BrandColors.primary,
+    width: 60,
+    height: 60,
+    borderRadius: radii.sm,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: BrandColors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
+    marginBottom: spacing.md,
   },
   brandTitle: {
-    fontSize: 28,
+    ...typography.displayMedium,
+    letterSpacing: 2,
     fontWeight: '900',
-    letterSpacing: 3,
-    color: '#FFFFFF',
   },
   subtitle: {
-    fontSize: 14,
-    color: BrandColors.textSecondaryDark,
-    marginTop: 6,
-    fontWeight: '500',
+    ...typography.bodySmall,
+    marginTop: 4,
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 69, 58, 0.15)',
-    borderColor: '#FF453A',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 20,
+    borderWidth: borders.thin,
+    borderRadius: radii.sm,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
   },
   errorText: {
-    color: '#FF453A',
-    fontSize: 13,
+    ...typography.caption,
     flex: 1,
-    fontWeight: '500',
   },
   formContainer: {
-    backgroundColor: BrandColors.surfaceDark,
-    borderRadius: 16,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: BrandColors.borderDark,
+    marginBottom: spacing.xl,
   },
-  inputLabel: {
-    color: BrandColors.textSecondaryDark,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: BrandColors.surfaceCardDark,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: BrandColors.borderDark,
-    paddingHorizontal: 12,
-    height: 50,
-  },
-  inputIcon: {
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 15,
-  },
-  eyeButton: {
-    padding: 6,
-  },
-  primaryButton: {
-    backgroundColor: BrandColors.primary,
-    borderRadius: 12,
-    height: 52,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24,
-    shadowColor: BrandColors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  demoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    height: 48,
-    borderWidth: 1,
-    borderColor: BrandColors.primary,
-    backgroundColor: 'rgba(252, 82, 0, 0.08)',
-    marginTop: 14,
-  },
-  demoButtonText: {
-    color: BrandColors.primary,
-    fontSize: 14,
-    fontWeight: '700',
+  actionBtn: {
+    marginTop: spacing.sm,
   },
   footerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: spacing.md,
   },
   footerText: {
-    color: BrandColors.textSecondaryDark,
-    fontSize: 14,
+    ...typography.bodySmall,
   },
   linkTouch: {
-    padding: 4,
+    paddingVertical: 4,
   },
   linkText: {
-    color: BrandColors.primary,
-    fontSize: 14,
+    ...typography.bodySmall,
     fontWeight: '700',
+  },
+  serverInfo: {
+    alignItems: 'center',
+    marginTop: spacing.lg,
+  },
+  serverText: {
+    ...typography.caption,
+    fontSize: 10,
   },
 });

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, PanResponder } from 'react-native';
-import Svg, { Path, Defs, LinearGradient, Stop, Line } from 'react-native-svg';
-import { BrandColors } from '../../constants/Colors';
+import Svg, { Path, Line } from 'react-native-svg';
+import { useColorScheme } from '../useColorScheme';
+import theme, { radii, spacing, typography, borders, shadows } from '../../constants/theme';
 
 interface ElevationChartProps {
   altitudes: (number | null)[];
@@ -14,17 +15,21 @@ export function ElevationChart({
   totalDistanceMeters,
   totalElevationGainMeters,
 }: ElevationChartProps) {
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = theme.theme[colorScheme];
   const [scrubIndex, setScrubIndex] = useState<number | null>(null);
 
   // Filter and smooth valid altitude points
   const validAltitudes: number[] = altitudes
     .filter((a): a is number => a !== null && isFinite(a))
-    .slice(0, 150); // Downsample for crisp rendering
+    .slice(0, 150);
 
   if (validAltitudes.length < 2) {
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No elevation data recorded for this activity.</Text>
+      <View style={[styles.emptyContainer, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+          No elevation data recorded for this activity.
+        </Text>
       </View>
     );
   }
@@ -80,38 +85,46 @@ export function ElevationChart({
       ? ((scrubIndex / (validAltitudes.length - 1)) * (totalDistanceMeters / 1000)).toFixed(2)
       : null;
 
+  const flatAreaFill = colorScheme === 'dark' ? colors.tintSubtle : '#FFF2EB';
+
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.title}>Elevation Profile</Text>
-          <Text style={styles.gainText}>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>Elevation Profile</Text>
+          <Text style={[styles.gainText, { color: colors.textSecondary }]}>
             Gain: +{Math.round(totalElevationGainMeters)} m
           </Text>
         </View>
 
         {activePoint && (
-          <View style={styles.scrubTooltip}>
-            <Text style={styles.scrubAlt}>{Math.round(activePoint.alt)} m</Text>
-            <Text style={styles.scrubDist}>at {activeDistanceKm} km</Text>
+          <View
+            style={[
+              styles.scrubTooltip,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+              shadows.none,
+            ]}
+          >
+            <Text style={[styles.scrubAlt, { color: colors.textPrimary }]}>
+              {Math.round(activePoint.alt)} m
+            </Text>
+            <Text style={[styles.scrubDist, { color: colors.textSecondary }]}>
+              at {activeDistanceKm} km
+            </Text>
           </View>
         )}
       </View>
 
       <View style={styles.chartWrapper} {...panResponder.panHandlers}>
         <Svg width={chartWidth} height={chartHeight}>
-          <Defs>
-            <LinearGradient id="elevationGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#FF9500" stopOpacity="0.45" />
-              <Stop offset="100%" stopColor="#FF9500" stopOpacity="0.02" />
-            </LinearGradient>
-          </Defs>
+          {/* Solid Flat Area Fill (Zero Gradient) */}
+          <Path d={areaPath} fill={flatAreaFill} />
 
-          {/* Background area fill */}
-          <Path d={areaPath} fill="url(#elevationGrad)" />
-
-          {/* Elevation profile line */}
-          <Path d={linePath} fill="none" stroke="#FF9500" strokeWidth="2.5" />
+          {/* Elevation Profile Line */}
+          <Path d={linePath} fill="none" stroke={colors.accent} strokeWidth="2" />
 
           {/* Active scrub cursor line */}
           {activePoint && (
@@ -120,7 +133,7 @@ export function ElevationChart({
               y1={0}
               x2={activePoint.x}
               y2={chartHeight - paddingBottom}
-              stroke="#FFFFFF"
+              stroke={colors.textPrimary}
               strokeWidth="1.5"
               strokeDasharray="4, 3"
             />
@@ -129,8 +142,8 @@ export function ElevationChart({
 
         {/* Min / Max Labels */}
         <View style={styles.yLabels}>
-          <Text style={styles.labelText}>{maxAlt} m</Text>
-          <Text style={styles.labelText}>{minAlt} m</Text>
+          <Text style={[styles.labelText, { color: colors.textMuted }]}>{maxAlt} m</Text>
+          <Text style={[styles.labelText, { color: colors.textMuted }]}>{minAlt} m</Text>
         </View>
       </View>
     </View>
@@ -139,62 +152,57 @@ export function ElevationChart({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 12,
+    marginVertical: spacing.md,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    ...typography.heading3,
   },
   gainText: {
-    fontSize: 12,
-    color: '#98989F',
+    ...typography.caption,
     marginTop: 2,
   },
   scrubTooltip: {
-    backgroundColor: '#2C2C2E',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.sm,
+    borderWidth: borders.thin,
     alignItems: 'flex-end',
   },
   scrubAlt: {
-    color: '#FF9500',
-    fontSize: 13,
-    fontWeight: '800',
+    ...typography.caption,
+    fontWeight: '700',
   },
   scrubDist: {
-    color: '#98989F',
+    ...typography.caption,
     fontSize: 10,
   },
   chartWrapper: {
-    position: 'relative',
-    alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   yLabels: {
-    position: 'absolute',
-    right: 8,
-    top: 6,
-    bottom: 24,
+    marginLeft: spacing.sm,
+    height: 100,
     justifyContent: 'space-between',
   },
   labelText: {
+    ...typography.caption,
     fontSize: 10,
-    color: '#636366',
-    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
   },
   emptyContainer: {
-    paddingVertical: 20,
+    padding: spacing.lg,
+    borderRadius: radii.md,
+    borderWidth: borders.thin,
     alignItems: 'center',
   },
   emptyText: {
-    color: '#636366',
-    fontSize: 13,
+    ...typography.bodySmall,
   },
 });

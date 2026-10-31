@@ -4,8 +4,6 @@ import {
   View,
   Text,
   ScrollView,
-  SafeAreaView,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
 } from 'react-native';
@@ -20,14 +18,23 @@ import {
   formatDistance,
   formatPace,
 } from '../../features/recording/Calculations';
-import Colors, { BrandColors } from '../../constants/Colors';
 import { useColorScheme } from '../../components/useColorScheme';
+import theme, { radii, spacing, typography, borders, shadows } from '../../constants/theme';
+import { ScreenContainer } from '../../components/ui/ScreenContainer';
+import { ScreenHeader } from '../../components/ui/ScreenHeader';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { SectionHeader } from '../../components/ui/SectionHeader';
+import { Badge } from '../../components/ui/Badge';
+import { MetricGrid } from '../../components/activity/MetricGrid';
+import { MetricItem } from '../../components/activity/MetricItem';
+import { SplitRow } from '../../components/activity/SplitRow';
+import { IconButton } from '../../components/ui/IconButton';
 
 export default function ActivityDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'dark'];
+  const colorScheme = useColorScheme() ?? 'dark';
+  const colors = theme.theme[colorScheme];
 
   const [activity, setActivity] = useState<LocalActivity | null>(null);
   const [coordinates, setCoordinates] = useState<LocalCoordinate[]>([]);
@@ -54,7 +61,7 @@ export default function ActivityDetailScreen() {
   }, [id]);
 
   const handleDelete = () => {
-    Alert.alert('Delete Activity', 'Are you sure you want to delete this activity?', [
+    Alert.alert('Delete Activity', 'Are you sure you want to delete this activity? This action cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -74,17 +81,17 @@ export default function ActivityDetailScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color={BrandColors.primary} />
-      </View>
+      <ScreenContainer style={styles.center}>
+        <ActivityIndicator size="large" color={colors.accent} />
+      </ScreenContainer>
     );
   }
 
   if (!activity) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text style={{ color: theme.text }}>Activity not found.</Text>
-      </View>
+      <ScreenContainer style={styles.center}>
+        <Text style={[styles.notFoundText, { color: colors.textPrimary }]}>Activity not found.</Text>
+      </ScreenContainer>
     );
   }
 
@@ -103,60 +110,66 @@ export default function ActivityDetailScreen() {
         }
       : undefined;
 
-  // Compute average pace for comparative split bars
-  const avgPaceSec =
-    splits.length > 0
-      ? splits.reduce((acc, s) => acc + s.average_pace_sec_per_unit, 0) / splits.length
-      : 300;
+  // Compute best and slowest pace for relative split bars
+  const splitPaces = splits.map((s) => s.average_pace_sec_per_unit).filter((p) => p > 0);
+  const bestPace = splitPaces.length > 0 ? Math.min(...splitPaces) : 240;
+  const slowestPace = splitPaces.length > 0 ? Math.max(...splitPaces) : 360;
+
+  const paceSecKm =
+    activity.distance_meters > 0
+      ? activity.moving_time_seconds / (activity.distance_meters / 1000)
+      : null;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Top Bar */}
-      <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={[styles.navTitle, { color: theme.text }]} numberOfLines={1}>
-          {activity.name}
-        </Text>
-        <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-          <Ionicons name="trash-outline" size={22} color="#FF3B30" />
-        </TouchableOpacity>
-      </View>
+    <ScreenContainer>
+      <ScreenHeader
+        title={activity.name}
+        showBack
+        rightAction={
+          <IconButton
+            icon={<Ionicons name="trash-outline" size={20} color={colors.error} />}
+            onPress={handleDelete}
+          />
+        }
+      />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Full interactive Map */}
+        {/* Full Map View */}
         {mapCoords.length > 0 && initialRegion && (
-          <View style={styles.mapContainer}>
+          <View style={[styles.mapContainer, { borderColor: colors.border }]}>
             <MapView
               provider={PROVIDER_GOOGLE}
               style={styles.map}
               initialRegion={initialRegion}
+              scrollEnabled={true}
+              zoomEnabled={true}
             >
               <Polyline
                 coordinates={mapCoords}
-                strokeColor={BrandColors.primary}
-                strokeWidth={5}
+                strokeColor={colors.accent}
+                strokeWidth={4}
                 lineCap="round"
                 lineJoin="round"
               />
-              <Marker coordinate={mapCoords[0]} title="Start" pinColor="#00D084" />
-              <Marker
-                coordinate={mapCoords[mapCoords.length - 1]}
-                title="Finish"
-                pinColor="#FF3B30"
-              />
+              <Marker coordinate={mapCoords[0]} title="Start">
+                <View style={[styles.startMarker, { backgroundColor: colors.success }]}>
+                  <Ionicons name="flag" size={10} color="#FFFFFF" />
+                </View>
+              </Marker>
+              <Marker coordinate={mapCoords[mapCoords.length - 1]} title="Finish">
+                <View style={[styles.startMarker, { backgroundColor: colors.error }]}>
+                  <Ionicons name="flag" size={10} color="#FFFFFF" />
+                </View>
+              </Marker>
             </MapView>
           </View>
         )}
 
-        {/* Title and Date */}
+        {/* Title and Metadata */}
         <View style={styles.titleSection}>
-          <View style={styles.sportBadge}>
-            <Text style={styles.sportBadgeText}>{activity.sport_type.toUpperCase()}</Text>
-          </View>
-          <Text style={[styles.activityTitle, { color: theme.text }]}>{activity.name}</Text>
-          <Text style={[styles.activityDate, { color: theme.textSecondary }]}>
+          <Badge label={activity.sport_type} variant="brand" style={{ marginBottom: spacing.xs }} />
+          <Text style={[styles.activityTitle, { color: colors.textPrimary }]}>{activity.name}</Text>
+          <Text style={[styles.activityDate, { color: colors.textSecondary }]}>
             {new Date(activity.start_timestamp).toLocaleString('en-US', {
               weekday: 'long',
               year: 'numeric',
@@ -168,268 +181,120 @@ export default function ActivityDetailScreen() {
           </Text>
         </View>
 
-        {/* Core Metric Grid */}
-        <View
-          style={[styles.statsCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
-        >
-          <View style={styles.metricRow}>
-            <View style={styles.metricItem}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Distance</Text>
-              <Text style={[styles.statNumber, { color: theme.text }]}>
-                {formatDistance(activity.distance_meters)} <Text style={styles.statUnit}>km</Text>
-              </Text>
-            </View>
+        {/* Core Metrics Matrix */}
+        <SurfaceCard>
+          <MetricGrid bordered={false}>
+            <MetricItem
+              label="Distance"
+              value={formatDistance(activity.distance_meters)}
+              unit="km"
+              size="large"
+            />
+            <MetricItem
+              label="Moving Time"
+              value={formatDuration(activity.moving_time_seconds)}
+              size="large"
+            />
+          </MetricGrid>
+          <MetricGrid bordered style={{ marginTop: spacing.sm }}>
+            <MetricItem
+              label="Avg Pace"
+              value={formatPace(paceSecKm)}
+              unit="/km"
+              size="medium"
+            />
+            <MetricItem
+              label="Elev Gain"
+              value={`+${Math.round(activity.elevation_gain_meters)}`}
+              unit="m"
+              size="medium"
+            />
+          </MetricGrid>
+          <MetricGrid bordered={false} style={{ marginTop: spacing.xs, paddingBottom: 0 }}>
+            <MetricItem
+              label="Calories"
+              value={activity.calories}
+              unit="kcal"
+              size="small"
+            />
+            <MetricItem
+              label="Elapsed Time"
+              value={formatDuration(activity.elapsed_time_seconds)}
+              size="small"
+            />
+          </MetricGrid>
+        </SurfaceCard>
 
-            <View style={styles.metricItem}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Moving Time</Text>
-              <Text style={[styles.statNumber, { color: theme.text }]}>
-                {formatDuration(activity.moving_time_seconds)}
-              </Text>
-            </View>
-          </View>
-
-          <View style={[styles.metricRow, { marginTop: 16 }]}>
-            <View style={styles.metricItem}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Avg Pace</Text>
-              <Text style={[styles.statNumber, { color: theme.text }]}>
-                {formatPace(
-                  activity.distance_meters > 0
-                    ? activity.moving_time_seconds / (activity.distance_meters / 1000)
-                    : null
-                )}{' '}
-                <Text style={styles.statUnit}>/km</Text>
-              </Text>
-            </View>
-
-            <View style={styles.metricItem}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Elevation Gain</Text>
-              <Text style={[styles.statNumber, { color: theme.text }]}>
-                {Math.round(activity.elevation_gain_meters)} <Text style={styles.statUnit}>m</Text>
-              </Text>
-            </View>
-          </View>
-
-          <View style={[styles.metricRow, { marginTop: 16 }]}>
-            <View style={styles.metricItem}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Calories</Text>
-              <Text style={[styles.statNumber, { color: theme.text }]}>
-                {activity.calories} <Text style={styles.statUnit}>kcal</Text>
-              </Text>
-            </View>
-
-            <View style={styles.metricItem}>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Elapsed Time</Text>
-              <Text style={[styles.statNumber, { color: theme.text }]}>
-                {formatDuration(activity.elapsed_time_seconds)}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Interactive Elevation Profile Chart */}
-        <View
-          style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}
-        >
+        {/* Elevation Profile Chart */}
+        <SurfaceCard>
           <ElevationChart
             altitudes={coordinates.map((c) => c.altitude)}
             totalDistanceMeters={activity.distance_meters}
             totalElevationGainMeters={activity.elevation_gain_meters}
           />
-        </View>
+        </SurfaceCard>
 
-        {/* Splits Section with Comparative Bars */}
+        {/* Kilometer Splits Table */}
         {splits.length > 0 && (
-          <View style={styles.splitsSection}>
-            <Text style={[styles.sectionHeader, { color: theme.text }]}>Splits (Kilometers)</Text>
-            {splits.map((split) => {
-              const isFaster = split.average_pace_sec_per_unit <= avgPaceSec;
-              const ratio = Math.min(
-                100,
-                Math.max(20, Math.round((avgPaceSec / split.average_pace_sec_per_unit) * 60))
-              );
-
-              return (
-                <View
-                  key={split.split_number}
-                  style={[styles.splitRow, { borderBottomColor: theme.cardBorder }]}
-                >
-                  <Text style={[styles.splitNumber, { color: theme.text }]}>
-                    {split.split_number}
-                  </Text>
-
-                  {/* Comparative Pace Bar */}
-                  <View style={styles.splitBarTrack}>
-                    <View
-                      style={[
-                        styles.splitBarFill,
-                        {
-                          width: `${ratio}%`,
-                          backgroundColor: isFaster ? '#34C759' : '#8E8E93',
-                        },
-                      ]}
-                    />
-                  </View>
-
-                  <Text style={[styles.splitPace, { color: theme.text }]}>
-                    {formatPace(split.average_pace_sec_per_unit)} /km
-                  </Text>
-                  <Text style={[styles.splitElevation, { color: theme.textSecondary }]}>
-                    {split.elevation_delta_meters > 0
-                      ? `+${Math.round(split.elevation_delta_meters)}m`
-                      : '-'}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
+          <SurfaceCard>
+            <SectionHeader title="KILOMETER SPLITS" />
+            {splits.map((split) => (
+              <SplitRow
+                key={split.split_number}
+                splitNumber={split.split_number}
+                paceSecondsKm={split.average_pace_sec_per_unit}
+                elevationGainMeters={split.elevation_delta_meters}
+                bestPaceSecKm={bestPace}
+                slowestPaceSecKm={slowestPace}
+              />
+            ))}
+          </SurfaceCard>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   center: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  navBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  backButton: {
-    padding: 6,
-  },
-  navTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    flex: 1,
-    textAlign: 'center',
-    marginHorizontal: 12,
-  },
-  deleteButton: {
-    padding: 6,
+  notFoundText: {
+    ...typography.body,
   },
   scrollContent: {
-    paddingBottom: 40,
+    padding: spacing.lg,
+    paddingBottom: spacing.huge,
   },
   mapContainer: {
-    height: 240,
-    width: '100%',
+    height: 220,
+    borderRadius: radii.md,
+    borderWidth: borders.thin,
+    overflow: 'hidden',
+    marginBottom: spacing.lg,
+    ...shadows.none,
   },
   map: {
     ...StyleSheet.absoluteFill,
   },
+  startMarker: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
   titleSection: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 10,
-  },
-  sportBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(252, 82, 0, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    marginBottom: 8,
-  },
-  sportBadgeText: {
-    color: BrandColors.primary,
-    fontSize: 11,
-    fontWeight: '800',
+    marginBottom: spacing.lg,
   },
   activityTitle: {
-    fontSize: 22,
-    fontWeight: '900',
+    ...typography.displayMedium,
     marginBottom: 4,
   },
   activityDate: {
-    fontSize: 13,
-  },
-  statsCard: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 18,
-  },
-  metricRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  metricItem: {
-    flex: 1,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  statUnit: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  chartCard: {
-    marginHorizontal: 16,
-    marginTop: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-  },
-  splitsSection: {
-    marginHorizontal: 16,
-    marginTop: 18,
-  },
-  sectionHeader: {
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 12,
-  },
-  splitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  splitNumber: {
-    fontSize: 14,
-    fontWeight: '700',
-    width: 28,
-  },
-  splitBarTrack: {
-    flex: 1,
-    height: 6,
-    backgroundColor: 'rgba(150,150,150,0.15)',
-    borderRadius: 3,
-    marginHorizontal: 12,
-    overflow: 'hidden',
-  },
-  splitBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  splitPace: {
-    fontSize: 13,
-    fontWeight: '700',
-    width: 80,
-    textAlign: 'right',
-  },
-  splitElevation: {
-    fontSize: 12,
-    width: 50,
-    textAlign: 'right',
+    ...typography.caption,
   },
 });
