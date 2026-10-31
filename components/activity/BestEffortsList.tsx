@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ShieldCheck, CaretRight } from 'phosphor-react-native';
 import { ActivityBestEffort } from '../../database/BestEffortsDao';
 import { formatDuration, formatPace } from '../../features/recording/Calculations';
 import { PrBadge } from './PrBadge';
@@ -78,7 +78,7 @@ export function BestEffortsList({ efforts, totalAchievementsCount = 7 }: BestEff
         activeOpacity={0.8}
       >
         <View style={styles.partnerLogoBox}>
-          <Ionicons name="shield" size={18} color="#10B981" />
+          <ShieldCheck size={18} color="#10B981" weight="fill" />
         </View>
         <View style={styles.partnerTextCol}>
           <Text style={[styles.partnerTitle, { color: colors.textPrimary }]}>
@@ -88,7 +88,7 @@ export function BestEffortsList({ efforts, totalAchievementsCount = 7 }: BestEff
             Train for your next best effort with Runna
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+        <CaretRight size={18} color={colors.textSecondary} weight="bold" />
       </TouchableOpacity>
 
       {/* View All Results Link */}

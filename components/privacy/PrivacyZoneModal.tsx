@@ -8,7 +8,14 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Lock,
+  X,
+  PlusCircle,
+  ShieldCheck,
+  Shield,
+  Trash,
+} from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
 import { PrivacyZoneDao, PrivacyZone } from '../../database/PrivacyZoneDao';
 import { useColorScheme } from '../useColorScheme';
@@ -98,11 +105,11 @@ export function PrivacyZoneModal({ visible, onClose, onSaved }: PrivacyZoneModal
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
             <View style={styles.headerLeft}>
-              <Ionicons name="lock-closed" size={20} color={colors.accent} style={styles.headerIcon} />
+              <Lock size={20} color={colors.accent} weight="fill" style={styles.headerIcon} />
               <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Privacy Zones</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-              <Ionicons name="close" size={22} color={colors.textSecondary} />
+              <X size={22} color={colors.textSecondary} weight="bold" />
             </TouchableOpacity>
           </View>
 
@@ -124,11 +131,11 @@ export function PrivacyZoneModal({ visible, onClose, onSaved }: PrivacyZoneModal
                 onPress={() => setShowAddForm(!showAddForm)}
                 style={styles.addTrigger}
               >
-                <Ionicons
-                  name={showAddForm ? 'close' : 'add-circle-outline'}
-                  size={20}
-                  color={colors.accent}
-                />
+                {showAddForm ? (
+                  <X size={20} color={colors.accent} weight="bold" />
+                ) : (
+                  <PlusCircle size={20} color={colors.accent} weight="bold" />
+                )}
                 <Text style={[styles.addText, { color: colors.accent }]}>
                   {showAddForm ? 'Cancel' : 'Add Zone'}
                 </Text>
@@ -194,11 +201,11 @@ export function PrivacyZoneModal({ visible, onClose, onSaved }: PrivacyZoneModal
                     onPress={() => handleToggle(z)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons
-                      name={z.is_active ? 'shield-checkmark' : 'shield-outline'}
-                      size={24}
-                      color={z.is_active ? colors.accent : colors.textMuted}
-                    />
+                    {z.is_active ? (
+                      <ShieldCheck size={24} color={colors.accent} weight="fill" />
+                    ) : (
+                      <Shield size={24} color={colors.textMuted} weight="regular" />
+                    )}
                   </TouchableOpacity>
 
                   <View style={styles.zoneMain}>
@@ -219,7 +226,7 @@ export function PrivacyZoneModal({ visible, onClose, onSaved }: PrivacyZoneModal
                     style={styles.zoneDelete}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+                    <Trash size={18} color={colors.textMuted} weight="bold" />
                   </TouchableOpacity>
                 </View>
               ))

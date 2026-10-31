@@ -7,7 +7,6 @@ function resolveDefaultHost(): string {
   }
 
   // 1. Try to extract IP from Expo Metro bundler hostUri
-  // In Expo Go, hostUri looks like "10.7.205.222:8081" or "192.168.1.50:8081"
   const hostUri =
     Constants.expoConfig?.hostUri ||
     (Constants as any).manifest?.debuggerHost ||
@@ -20,7 +19,7 @@ function resolveDefaultHost(): string {
     }
   }
 
-  // 2. Direct LAN IP fallback (Host machine IP on current Wi-Fi network)
+  // 2. Direct LAN IP fallback
   return 'http://10.7.205.222:4000/api/v1';
 }
 
@@ -56,7 +55,6 @@ export class ApiClient {
       headers['Authorization'] = `Bearer ${this.authToken}`;
     }
 
-    // Abort controller with 6-second timeout to prevent indefinite hanging
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6000);
 
@@ -76,9 +74,7 @@ export class ApiClient {
           if (errorJson.error) {
             errorMessage = errorJson.error;
           }
-        } catch {
-          // Non-JSON error body
-        }
+        } catch {}
         throw new Error(errorMessage);
       }
 
@@ -150,6 +146,19 @@ export class ApiClient {
     });
   }
 
+  static async addComment(activityId: string, content: string) {
+    return this.request<{ comment: any }>(`/activities/${activityId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  static async deleteActivity(activityId: string) {
+    return this.request<{ message: string }>(`/activities/${activityId}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Segments & PostGIS Discovery APIs
   static async getNearbySegments(lat: number, lng: number, radiusMeters = 10000, sportType?: string) {
     let url = `/segments/nearby?lat=${lat}&lng=${lng}&radiusMeters=${radiusMeters}`;
@@ -168,25 +177,100 @@ export class ApiClient {
     return this.request<{ segmentId: string; leaderboard: any[] }>(`/segments/${segmentId}/leaderboard`);
   }
 
-  static async addComment(activityId: string, content: string) {
-    return this.request<{ comment: any }>(`/activities/${activityId}/comments`, {
-      method: 'POST',
-      body: JSON.stringify({ content }),
-    });
-  }
-
-  static async deleteActivity(activityId: string) {
-    return this.request<{ message: string }>(`/activities/${activityId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // Athlete Profile & Stats
+  // Athlete Profile & Social APIs
   static async getCurrentUser() {
     return this.request<{ user: any }>('/auth/me');
   }
 
   static async getAthleteProfile(userId: string) {
-    return this.request<{ athlete: any; stats: any }>(`/users/${userId}`);
+    return this.request<{ athlete: any; stats: any; recentActivities?: any[] }>(`/users/${userId}`);
+  }
+
+  static async searchAthletes(query: string) {
+    return this.request<{ athletes: any[] }>(`/users/search?q=${encodeURIComponent(query)}`);
+  }
+
+  static async toggleFollow(userId: string) {
+    return this.request<{ following: boolean }>(`/users/${userId}/follow`, {
+      method: 'POST',
+    });
+  }
+
+  // Notifications APIs
+  static async getNotifications() {
+    return this.request<{ notifications: any[]; unreadCount: number }>('/notifications');
+  }
+
+  static async markNotificationRead(notificationId?: string, all = false) {
+    return this.request<{ success: boolean; message: string }>('/notifications/mark-read', {
+      method: 'POST',
+      body: JSON.stringify({ notificationId, all }),
+    });
+  }
+
+  // Clubs APIs
+  static async getClubs() {
+    return this.request<{ clubs: any[] }>('/clubs');
+  }
+
+  static async getClub(id: string) {
+    return this.request<{ club: any }>(`/clubs/${id}`);
+  }
+
+  static async toggleJoinClub(id: string) {
+    return this.request<{ isMember: boolean; memberCount: number }>(`/clubs/${id}/join`, {
+      method: 'POST',
+    });
+  }
+
+  static async createClub(payload: { name: string; sportType?: string; location?: string; description?: string }) {
+    return this.request<{ club: any }>('/clubs', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Challenges APIs
+  static async getChallenges() {
+    return this.request<{ challenges: any[] }>('/challenges');
+  }
+
+  static async getChallenge(id: string) {
+    return this.request<{ challenge: any }>(`/challenges/${id}`);
+  }
+
+  static async toggleJoinChallenge(id: string) {
+    return this.request<{ joined: boolean; participantCount: number }>(`/challenges/${id}/join`, {
+      method: 'POST',
+    });
+  }
+
+  // Routes APIs
+  static async getRoutes(sport?: string) {
+    const url = sport && sport !== 'All' ? `/routes?sport=${encodeURIComponent(sport)}` : '/routes';
+    return this.request<{ routes: any[] }>(url);
+  }
+
+  static async getRoute(id: string) {
+    return this.request<{ route: any }>(`/routes/${id}`);
+  }
+
+  static async createRoute(payload: { name: string; sportType: string; distanceMeters: number; elevationGainMeters?: number }) {
+    return this.request<{ route: any }>('/routes', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  // Subscriptions APIs
+  static async getSubscriptionStatus() {
+    return this.request<{ subscription: any; features: any }>('/subscriptions/status');
+  }
+
+  static async upgradeSubscription(plan: 'monthly' | 'annual') {
+    return this.request<{ success: boolean; subscription: any; message: string }>('/subscriptions/upgrade', {
+      method: 'POST',
+      body: JSON.stringify({ plan }),
+    });
   }
 }

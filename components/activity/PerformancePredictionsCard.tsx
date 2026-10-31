@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { CaretDown, CaretUp, CaretRight } from 'phosphor-react-native';
 import { PerformancePrediction } from '../../database/PredictionsDao';
 import { formatDuration, formatPace } from '../../features/recording/Calculations';
 import { useColorScheme } from '../useColorScheme';
@@ -50,12 +50,11 @@ export function PerformancePredictionsCard({ predictions }: PerformancePredictio
             {/* Green Delta Pill */}
             {p.delta_seconds !== 0 && (
               <View style={[styles.deltaPill, { backgroundColor: isImprovement ? '#10B981' : '#6B7280' }]}>
-                <Ionicons
-                  name={isImprovement ? 'caret-down' : 'caret-up'}
-                  size={10}
-                  color="#FFFFFF"
-                  style={{ marginRight: 2 }}
-                />
+                {isImprovement ? (
+                  <CaretDown size={10} color="#FFFFFF" weight="bold" style={{ marginRight: 2 }} />
+                ) : (
+                  <CaretUp size={10} color="#FFFFFF" weight="bold" style={{ marginRight: 2 }} />
+                )}
                 <Text style={styles.deltaPillText}>{deltaFormatted}</Text>
               </View>
             )}
@@ -65,7 +64,7 @@ export function PerformancePredictionsCard({ predictions }: PerformancePredictio
 
       <View style={styles.footerRow}>
         <View style={styles.spacer} />
-        <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+        <CaretRight size={16} color={colors.textSecondary} weight="bold" />
       </View>
     </View>
   );

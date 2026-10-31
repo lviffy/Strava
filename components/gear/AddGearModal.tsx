@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { X, CheckSquare, Square } from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
 import { GearDao } from '../../database/GearDao';
 import { useColorScheme } from '../useColorScheme';
@@ -90,7 +90,7 @@ export function AddGearModal({ visible, onClose, onSaved }: AddGearModalProps) {
           <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
             <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Add New Gear</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-              <Ionicons name="close" size={22} color={colors.textSecondary} />
+              <X size={22} color={colors.textSecondary} weight="bold" />
             </TouchableOpacity>
           </View>
 
@@ -161,11 +161,11 @@ export function AddGearModal({ visible, onClose, onSaved }: AddGearModalProps) {
                   Automatically assigned to future {type === 'Shoes' ? 'runs and walks' : 'rides'}
                 </Text>
               </View>
-              <Ionicons
-                name={isDefault ? 'checkbox' : 'square-outline'}
-                size={24}
-                color={isDefault ? colors.accent : colors.textMuted}
-              />
+              {isDefault ? (
+                <CheckSquare size={24} color={colors.accent} weight="fill" />
+              ) : (
+                <Square size={24} color={colors.textMuted} weight="regular" />
+              )}
             </TouchableOpacity>
 
             {/* Action Buttons */}

@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Scissors, X, Minus, Plus } from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
 import { ActivityDao, LocalCoordinate } from '../../database/ActivityDao';
 import { useColorScheme } from '../useColorScheme';
@@ -87,11 +87,11 @@ export function CropActivityModal({
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
             <View style={styles.headerLeft}>
-              <Ionicons name="cut-outline" size={20} color={colors.accent} style={styles.headerIcon} />
+              <Scissors size={20} color={colors.accent} weight="bold" style={styles.headerIcon} />
               <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Crop Activity</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-              <Ionicons name="close" size={22} color={colors.textSecondary} />
+              <X size={22} color={colors.textSecondary} weight="bold" />
             </TouchableOpacity>
           </View>
 
@@ -149,14 +149,14 @@ export function CropActivityModal({
                   style={[styles.stepperBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}
                   onPress={() => handleAdjustStart(-1)}
                 >
-                  <Ionicons name="remove" size={18} color={colors.textPrimary} />
+                  <Minus size={18} color={colors.textPrimary} weight="bold" />
                 </TouchableOpacity>
                 <Text style={[styles.currentValue, { color: colors.textPrimary }]}>{trimStartCount}</Text>
                 <TouchableOpacity
                   style={[styles.stepperBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}
                   onPress={() => handleAdjustStart(1)}
                 >
-                  <Ionicons name="add" size={18} color={colors.textPrimary} />
+                  <Plus size={18} color={colors.textPrimary} weight="bold" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.stepperBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}
@@ -186,14 +186,14 @@ export function CropActivityModal({
                   style={[styles.stepperBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}
                   onPress={() => handleAdjustEnd(-1)}
                 >
-                  <Ionicons name="remove" size={18} color={colors.textPrimary} />
+                  <Minus size={18} color={colors.textPrimary} weight="bold" />
                 </TouchableOpacity>
                 <Text style={[styles.currentValue, { color: colors.textPrimary }]}>{trimEndCount}</Text>
                 <TouchableOpacity
                   style={[styles.stepperBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}
                   onPress={() => handleAdjustEnd(1)}
                 >
-                  <Ionicons name="add" size={18} color={colors.textPrimary} />
+                  <Plus size={18} color={colors.textPrimary} weight="bold" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.stepperBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}

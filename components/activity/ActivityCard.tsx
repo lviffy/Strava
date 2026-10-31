@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ThumbsUp, ChatCircle, ShareNetwork } from 'phosphor-react-native';
 import { useColorScheme } from '../useColorScheme';
 import theme, { radii, spacing, typography, borders, shadows } from '../../constants/theme';
 import { AthleteAvatar } from './AthleteAvatar';
@@ -37,6 +37,7 @@ export interface ActivityCardData {
 interface ActivityCardProps {
   activity: ActivityCardData;
   onPress?: () => void;
+  onAthletePress?: () => void;
   onKudosPress?: () => void;
   onCommentPress?: () => void;
   showSocialActions?: boolean;
@@ -45,6 +46,7 @@ interface ActivityCardProps {
 export function ActivityCard({
   activity,
   onPress,
+  onAthletePress,
   onKudosPress,
   onCommentPress,
   showSocialActions = true,
@@ -75,17 +77,24 @@ export function ActivityCard({
     >
       {/* Header */}
       <View style={styles.header}>
-        <AthleteAvatar
-          name={activity.athleteName}
-          size="md"
-          color={activity.athleteAvatarColor}
-        />
-        <View style={styles.headerMeta}>
-          <Text style={[styles.athleteName, { color: colors.textPrimary }]} numberOfLines={1}>
-            {activity.athleteName}
-          </Text>
-          <Text style={[styles.timeAgo, { color: colors.textSecondary }]}>{timeAgo}</Text>
-        </View>
+        <TouchableOpacity
+          style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+          onPress={onAthletePress}
+          disabled={!onAthletePress}
+          activeOpacity={0.7}
+        >
+          <AthleteAvatar
+            name={activity.athleteName}
+            size="md"
+            color={activity.athleteAvatarColor}
+          />
+          <View style={styles.headerMeta}>
+            <Text style={[styles.athleteName, { color: colors.textPrimary }]} numberOfLines={1}>
+              {activity.athleteName}
+            </Text>
+            <Text style={[styles.timeAgo, { color: colors.textSecondary }]}>{timeAgo}</Text>
+          </View>
+        </TouchableOpacity>
         <View style={styles.headerRight}>
           {activity.isLocalOnly && (
             <Badge label="Pending" variant="warning" style={styles.badgeMargin} />
@@ -120,7 +129,7 @@ export function ActivityCard({
         />
         <MetricItem
           label="Achievements"
-          value={`${activity.achievementsCount ?? 7} 🏆`}
+          value={activity.achievementsCount ?? 7}
           size="medium"
         />
       </MetricGrid>
@@ -142,10 +151,10 @@ export function ActivityCard({
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons
-              name={activity.hasKudoed ? 'thumbs-up' : 'thumbs-up-outline'}
+            <ThumbsUp
               size={18}
               color={activity.hasKudoed ? colors.accent : colors.textSecondary}
+              weight={activity.hasKudoed ? 'fill' : 'regular'}
             />
             <Text
               style={[
@@ -163,10 +172,10 @@ export function ActivityCard({
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons
-              name="chatbubble-outline"
-              size={17}
+            <ChatCircle
+              size={18}
               color={colors.textSecondary}
+              weight="regular"
             />
             <Text style={[styles.actionCount, { color: colors.textSecondary }]}>
               {activity.commentsCount ?? 0}
@@ -179,10 +188,10 @@ export function ActivityCard({
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons
-              name="share-outline"
+            <ShareNetwork
               size={18}
               color={colors.textSecondary}
+              weight="regular"
             />
           </TouchableOpacity>
         </View>

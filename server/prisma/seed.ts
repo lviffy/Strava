@@ -4,9 +4,16 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('[Seed] Seeding database...');
 
   // Clean existing data
+  await prisma.notification.deleteMany({});
+  await prisma.challengeParticipant.deleteMany({});
+  await prisma.challenge.deleteMany({});
+  await prisma.clubMember.deleteMany({});
+  await prisma.club.deleteMany({});
+  await prisma.route.deleteMany({});
+  await prisma.subscription.deleteMany({});
   await prisma.comment.deleteMany({});
   await prisma.kudos.deleteMany({});
   await prisma.split.deleteMany({});
@@ -53,9 +60,19 @@ async function main() {
     },
   });
 
-  console.log(`👤 Created athletes: ${alex.firstName} ${alex.lastName} & ${sarah.firstName} ${sarah.lastName}`);
+  console.log(`[Seed] Created athletes: ${alex.firstName} ${alex.lastName} & ${sarah.firstName} ${sarah.lastName}`);
 
-  // 2. Create Segments (with real coordinates for PostGIS testing)
+  // 2. Create Subscription
+  await prisma.subscription.create({
+    data: {
+      userId: alex.id,
+      tier: 'summit',
+      status: 'active',
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  // 3. Create Segments
   const segment1 = await prisma.segment.create({
     data: {
       name: 'Embarcadero Waterfront Sprint',
@@ -98,54 +115,31 @@ async function main() {
     },
   });
 
-  console.log('📍 Created 3 PostGIS segments in San Francisco');
-
-  // 3. Create Sample Activities
-  const activity1Id = 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d';
-  const activity1 = await prisma.activity.create({
+  // 4. Create Activities
+  const activity1Id = 'act_seed_101';
+  await prisma.activity.create({
     data: {
       id: activity1Id,
       userId: alex.id,
-      name: 'Morning Marina Fog Run',
+      name: 'Morning Embarcadero Tempo Run',
       sportType: 'Run',
       visibility: 'everyone',
-      startTime: new Date(Date.now() - 3600 * 4 * 1000), // 4 hours ago
-      elapsedTimeSeconds: 1845,
-      movingTimeSeconds: 1780,
-      distanceMeters: 5240,
-      elevationGainMeters: 45,
-      calories: 382,
-      polylineEncoded: 'g`|eFvchjV_@eAg@q@uAwAiBwBwAwAs@u@eBgCu@uAwAwAiBwB',
-      startLatitude: 37.8050,
-      startLongitude: -122.4350,
-      endLatitude: 37.8070,
-      endLongitude: -122.4380,
+      startTime: new Date(Date.now() - 3600000 * 4),
+      elapsedTimeSeconds: 2780,
+      movingTimeSeconds: 2700,
+      distanceMeters: 8520,
+      elevationGainMeters: 42,
+      calories: 590,
+      polylineEncoded: 'g`|eFvchjV_@eAg@q@uAwAiBwBwAwAs@u@',
+      startLatitude: 37.7950,
+      startLongitude: -122.3930,
+      endLatitude: 37.8050,
+      endLongitude: -122.4040,
       deviceInfo: 'Expo Go (Android)',
     },
   });
 
-  // Create Splits for Activity 1
-  await prisma.split.createMany({
-    data: [
-      { activityId: activity1Id, splitNumber: 1, distanceUnit: 'km', movingTimeSeconds: 335, elevationDeltaMeters: 5 },
-      { activityId: activity1Id, splitNumber: 2, distanceUnit: 'km', movingTimeSeconds: 340, elevationDeltaMeters: 8 },
-      { activityId: activity1Id, splitNumber: 3, distanceUnit: 'km', movingTimeSeconds: 345, elevationDeltaMeters: 12 },
-      { activityId: activity1Id, splitNumber: 4, distanceUnit: 'km', movingTimeSeconds: 350, elevationDeltaMeters: 10 },
-      { activityId: activity1Id, splitNumber: 5, distanceUnit: 'km', movingTimeSeconds: 330, elevationDeltaMeters: 7 },
-    ],
-  });
-
-  // Coordinates for Activity 1
-  await prisma.coordinate.createMany({
-    data: [
-      { activityId: activity1Id, seq: 0, latitude: 37.8050, longitude: -122.4350, altitude: 12.5, accuracy: 3.2, speed: 2.9, timestamp: new Date(Date.now() - 3600 * 4 * 1000) },
-      { activityId: activity1Id, seq: 1, latitude: 37.8055, longitude: -122.4360, altitude: 13.0, accuracy: 2.8, speed: 3.1, timestamp: new Date(Date.now() - 3600 * 4 * 1000 + 300000) },
-      { activityId: activity1Id, seq: 2, latitude: 37.8062, longitude: -122.4372, altitude: 14.1, accuracy: 3.0, speed: 3.0, timestamp: new Date(Date.now() - 3600 * 4 * 1000 + 600000) },
-      { activityId: activity1Id, seq: 3, latitude: 37.8070, longitude: -122.4380, altitude: 15.2, accuracy: 2.5, speed: 3.2, timestamp: new Date(Date.now() - 3600 * 4 * 1000 + 900000) },
-    ],
-  });
-
-  // Sarah kudos Alex's run
+  // Kudos and comments
   await prisma.kudos.create({
     data: {
       activityId: activity1Id,
@@ -153,30 +147,42 @@ async function main() {
     },
   });
 
-  // Sarah comments on Alex's run
   await prisma.comment.create({
     data: {
       activityId: activity1Id,
       userId: sarah.id,
-      content: 'Solid pace through the Marina! 🔥',
+      content: 'Solid morning pace Alex! Chasing that marathon PR.',
     },
   });
 
-  // Sarah's bike ride
-  const activity2Id = 'b2c3d4e5-f6a1-4b2c-9d3e-4f5a6b7c8d9e';
+  // Splits for activity 1
+  for (let i = 1; i <= 8; i++) {
+    await prisma.split.create({
+      data: {
+        activityId: activity1Id,
+        splitNumber: i,
+        distanceUnit: 'km',
+        movingTimeSeconds: 310 + Math.floor(Math.random() * 25),
+        elevationDeltaMeters: Math.floor(Math.random() * 8),
+      },
+    });
+  }
+
+  // Sarah's activity
+  const activity2Id = 'act_seed_102';
   await prisma.activity.create({
     data: {
       id: activity2Id,
       userId: sarah.id,
-      name: 'Hawk Hill Golden Hour Ride 🚴‍♀️',
+      name: 'Sunset Marin Headlands Ride',
       sportType: 'Ride',
       visibility: 'everyone',
-      startTime: new Date(Date.now() - 3600 * 24 * 1000), // Yesterday
-      elapsedTimeSeconds: 4200,
-      movingTimeSeconds: 3850,
-      distanceMeters: 28400,
-      elevationGainMeters: 480,
-      calories: 780,
+      startTime: new Date(Date.now() - 3600000 * 24),
+      elapsedTimeSeconds: 5400,
+      movingTimeSeconds: 5120,
+      distanceMeters: 34200,
+      elevationGainMeters: 620,
+      calories: 980,
       polylineEncoded: 'w`|eFlokjV_@eAg@q@uAwAiBwBwAwAs@u@eBgCu@uAwAwAiBwB',
       startLatitude: 37.8199,
       startLongitude: -122.4783,
@@ -186,7 +192,7 @@ async function main() {
     },
   });
 
-  // Segment efforts
+  // Segment effort
   await prisma.segmentEffort.create({
     data: {
       segmentId: segment1.id,
@@ -199,12 +205,174 @@ async function main() {
     },
   });
 
-  console.log('✅ Database seeded with athletes, activities, splits, comments, and segments!');
+  // 5. Create Clubs
+  const club1 = await prisma.club.create({
+    data: {
+      name: 'San Francisco Trail Runners',
+      sportType: 'Running Club',
+      location: 'San Francisco, CA',
+      description: 'Weekly morning trails in the Presidio and Marin Headlands. All paces welcome!',
+      avatarUrl: 'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?w=300&h=300&fit=crop',
+      creatorId: alex.id,
+    },
+  });
+
+  const club2 = await prisma.club.create({
+    data: {
+      name: 'Bay Area Cycling Syndicate',
+      sportType: 'Cycling Team',
+      location: 'Palo Alto, CA',
+      description: 'Competitive and social road/gravel cycling rides across Kings Mountain and Highway 1.',
+      avatarUrl: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=300&h=300&fit=crop',
+      creatorId: sarah.id,
+    },
+  });
+
+  const club3 = await prisma.club.create({
+    data: {
+      name: 'Dawn Patrol Early Risers',
+      sportType: 'Multi-Sport',
+      location: 'Marin County, CA',
+      description: 'Starting workouts before 6 AM every Tuesday and Thursday.',
+      avatarUrl: 'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=300&h=300&fit=crop',
+      creatorId: alex.id,
+    },
+  });
+
+  // Club members
+  await prisma.clubMember.create({ data: { clubId: club1.id, userId: alex.id, role: 'admin' } });
+  await prisma.clubMember.create({ data: { clubId: club1.id, userId: sarah.id, role: 'member' } });
+  await prisma.clubMember.create({ data: { clubId: club2.id, userId: sarah.id, role: 'admin' } });
+  await prisma.clubMember.create({ data: { clubId: club3.id, userId: alex.id, role: 'member' } });
+
+  // 6. Create Challenges
+  const now = new Date();
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+  const challenge1 = await prisma.challenge.create({
+    data: {
+      title: 'November 50K Challenge',
+      description: 'Log 50 kilometers of running, walking, or hiking this month to earn the digital finisher badge.',
+      sportType: 'Run',
+      targetDistanceMeters: 50000,
+      startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+      endDate: endOfMonth,
+      badgeIcon: 'medal-outline',
+    },
+  });
+
+  const challenge2 = await prisma.challenge.create({
+    data: {
+      title: 'Autumn Gran Fondo 100K',
+      description: 'Ride 100 kilometers in a single activity or across the month.',
+      sportType: 'Ride',
+      targetDistanceMeters: 100000,
+      startDate: new Date(now.getFullYear(), now.getMonth(), 1),
+      endDate: endOfMonth,
+      badgeIcon: 'trophy-outline',
+    },
+  });
+
+  const challenge3 = await prisma.challenge.create({
+    data: {
+      title: 'Weekend 10K Time Trial',
+      description: 'Test your speed over a 10K distance this weekend.',
+      sportType: 'Run',
+      targetDistanceMeters: 10000,
+      startDate: now,
+      endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      badgeIcon: 'flame-outline',
+    },
+  });
+
+  // Challenge participants
+  await prisma.challengeParticipant.create({
+    data: {
+      challengeId: challenge1.id,
+      userId: alex.id,
+      progressDistanceMeters: 28500,
+      completed: false,
+    },
+  });
+
+  await prisma.challengeParticipant.create({
+    data: {
+      challengeId: challenge2.id,
+      userId: alex.id,
+      progressDistanceMeters: 100000,
+      completed: true,
+    },
+  });
+
+  // 7. Create Notifications
+  await prisma.notification.create({
+    data: {
+      userId: alex.id,
+      actorId: sarah.id,
+      type: 'kudos',
+      title: 'New Kudos',
+      message: 'Sarah Chen gave you kudos on Morning Embarcadero Tempo Run',
+      entityId: activity1Id,
+      isRead: false,
+    },
+  });
+
+  await prisma.notification.create({
+    data: {
+      userId: alex.id,
+      actorId: sarah.id,
+      type: 'comment',
+      title: 'New Comment',
+      message: 'Sarah Chen commented on your activity: "Solid morning pace Alex!"',
+      entityId: activity1Id,
+      isRead: false,
+    },
+  });
+
+  await prisma.notification.create({
+    data: {
+      userId: alex.id,
+      type: 'challenge',
+      title: 'Challenge Complete!',
+      message: 'Congratulations! You completed the Autumn Gran Fondo 100K challenge.',
+      entityId: challenge2.id,
+      isRead: true,
+    },
+  });
+
+  // 8. Create Routes
+  await prisma.route.create({
+    data: {
+      userId: alex.id,
+      name: 'Presidio Coastal Bluffs Trail',
+      sportType: 'Run',
+      distanceMeters: 7400,
+      elevationGainMeters: 145,
+      estTimeMinutes: 42,
+      surfaceType: 'Dirt & Paved',
+      polylineEncoded: 'w`|eFlokjV_@eAg@q@uAwAiBwBwAwAs@u@eBgCu@uA',
+    },
+  });
+
+  await prisma.route.create({
+    data: {
+      userId: alex.id,
+      name: 'Twin Peaks Summit Climb',
+      sportType: 'Ride',
+      distanceMeters: 14800,
+      elevationGainMeters: 380,
+      estTimeMinutes: 55,
+      surfaceType: 'Paved Road',
+      polylineEncoded: '_{zeFn{cjVs@uAeBgCu@uA',
+    },
+  });
+
+  console.log('[Seed] Database seeded with athletes, activities, clubs, challenges, routes, and notifications!');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seeding error:', e);
+    console.error('[Seed] Seeding error:', e);
     process.exit(1);
   })
   .finally(async () => {

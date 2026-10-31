@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { CaretRight, Play } from 'phosphor-react-native';
 import { ActivityInsight } from '../../database/InsightsDao';
 import { PerformancePrediction } from '../../database/PredictionsDao';
 import { ActivityBestEffort } from '../../database/BestEffortsDao';
@@ -77,7 +77,7 @@ export function InsightsGrid({
             ))}
 
             <View style={styles.cardFooter}>
-              <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+              <CaretRight size={16} color={colors.textSecondary} weight="bold" />
             </View>
           </View>
 
@@ -95,12 +95,12 @@ export function InsightsGrid({
               <View style={styles.flyoverOverlay}>
                 <Text style={styles.flyoverText}>Flyover</Text>
                 <View style={styles.playIconCircle}>
-                  <Ionicons name="play" size={14} color="#FFFFFF" />
+                  <Play size={14} color="#FFFFFF" weight="fill" />
                 </View>
               </View>
             </View>
             <View style={styles.cardFooter}>
-              <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+              <CaretRight size={16} color={colors.textSecondary} weight="bold" />
             </View>
           </TouchableOpacity>
         </View>
@@ -136,7 +136,7 @@ export function InsightsGrid({
             )}
 
             <View style={styles.cardFooter}>
-              <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+              <CaretRight size={16} color={colors.textSecondary} weight="bold" />
             </View>
           </View>
 

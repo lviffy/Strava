@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
+import { Lightning, CheckCircle } from 'phosphor-react-native';
 import { useColorScheme } from '../components/useColorScheme';
 import theme, { radii, spacing, typography, borders } from '../constants/theme';
 import { SurfaceCard } from '../components/ui/SurfaceCard';
@@ -17,7 +17,7 @@ export default function ModalScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <View style={[styles.iconBadge, { backgroundColor: colors.accent }]}>
-            <Ionicons name="flame" size={32} color="#FFFFFF" />
+            <Lightning size={32} color="#FFFFFF" weight="fill" />
           </View>
           <Text style={[styles.title, { color: colors.textPrimary }]}>Strava Mobile</Text>
           <Text style={[styles.version, { color: colors.textSecondary }]}>
@@ -35,19 +35,19 @@ export default function ModalScreen() {
         <SurfaceCard>
           <SectionHeader title="DESIGN PRINCIPLES" />
           <View style={styles.bulletRow}>
-            <Ionicons name="checkmark-circle-outline" size={16} color={colors.accent} style={styles.bulletIcon} />
+            <CheckCircle size={16} color={colors.accent} weight="bold" style={styles.bulletIcon} />
             <Text style={[styles.bulletText, { color: colors.textPrimary }]}>
               Quiet Excellence: Minimalist, athletic typography with tabular numerals.
             </Text>
           </View>
           <View style={styles.bulletRow}>
-            <Ionicons name="checkmark-circle-outline" size={16} color={colors.accent} style={styles.bulletIcon} />
+            <CheckCircle size={16} color={colors.accent} weight="bold" style={styles.bulletIcon} />
             <Text style={[styles.bulletText, { color: colors.textPrimary }]}>
               Zero Drop Shadows: Flat structural planes with 1px hairline borders.
             </Text>
           </View>
           <View style={styles.bulletRow}>
-            <Ionicons name="checkmark-circle-outline" size={16} color={colors.accent} style={styles.bulletIcon} />
+            <CheckCircle size={16} color={colors.accent} weight="bold" style={styles.bulletIcon} />
             <Text style={[styles.bulletText, { color: colors.textPrimary }]}>
               Zero Gradients: Crisp vector fills with high daylight legibility.
             </Text>

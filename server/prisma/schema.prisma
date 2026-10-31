@@ -21,12 +21,17 @@ model User {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
-  activities      Activity[]
-  kudos           Kudos[]
-  comments        Comment[]
-  following       Follow[]        @relation("UserFollows")
-  followers       Follow[]        @relation("UserFollowedBy")
-  segmentEfforts  SegmentEffort[]
+  activities            Activity[]
+  kudos                 Kudos[]
+  comments              Comment[]
+  following             Follow[]               @relation("UserFollows")
+  followers             Follow[]               @relation("UserFollowedBy")
+  segmentEfforts        SegmentEffort[]
+  notifications         Notification[]
+  clubMemberships       ClubMember[]
+  challengeEnrollments  ChallengeParticipant[]
+  routes                Route[]
+  subscription          Subscription?
 
   @@map("users")
 }
@@ -168,4 +173,112 @@ model SegmentEffort {
 
   @@index([segmentId, movingTimeSeconds(sort: Asc)])
   @@map("segment_efforts")
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  actorId     String?
+  type        String   // 'kudos', 'comment', 'follow', 'challenge', 'club', 'system'
+  title       String
+  message     String
+  entityId    String?  // activityId or clubId or challengeId
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model Club {
+  id          String       @id @default(uuid())
+  name        String
+  sportType   String       @default("Running Club")
+  location    String?
+  description String?
+  avatarUrl   String?
+  isPrivate   Boolean      @default(false)
+  creatorId   String?
+  createdAt   DateTime     @default(now())
+
+  members     ClubMember[]
+
+  @@map("clubs")
+}
+
+model ClubMember {
+  id        String   @id @default(uuid())
+  clubId    String
+  userId    String
+  role      String   @default("member") // 'member', 'admin'
+  joinedAt  DateTime @default(now())
+
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, userId])
+  @@map("club_members")
+}
+
+model Challenge {
+  id                   String                 @id @default(uuid())
+  title                String
+  description          String?
+  sportType            String                 @default("Run")
+  targetDistanceMeters Float
+  startDate            DateTime
+  endDate              DateTime
+  badgeIcon            String                 @default("medal-outline")
+  createdAt            DateTime               @default(now())
+
+  participants         ChallengeParticipant[]
+
+  @@map("challenges")
+}
+
+model ChallengeParticipant {
+  id                     String    @id @default(uuid())
+  challengeId            String
+  userId                 String
+  progressDistanceMeters Float     @default(0)
+  completed              Boolean   @default(false)
+  joinedAt               DateTime  @default(now())
+
+  challenge              Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+  @@map("challenge_participants")
+}
+
+model Route {
+  id                    String   @id @default(uuid())
+  userId                String
+  name                  String
+  sportType             String   @default("Run")
+  distanceMeters        Float
+  elevationGainMeters   Float    @default(0)
+  estTimeMinutes        Int      @default(45)
+  surfaceType           String   @default("Paved Road")
+  polylineEncoded       String?  @db.Text
+  createdAt             DateTime @default(now())
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("routes")
+}
+
+model Subscription {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  tier      String   @default("summit") // 'free', 'summit'
+  status    String   @default("active") // 'active', 'canceled', 'expired'
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
 }

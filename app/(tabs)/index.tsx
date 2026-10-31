@@ -191,6 +191,11 @@ export default function HomeFeedScreen() {
           <ActivityCard
             activity={item}
             onPress={() => router.push(`/activity/${item.id}`)}
+            onAthletePress={() => {
+              if (item.athleteId) {
+                router.push(`/profile/${item.athleteId}`);
+              }
+            }}
             onKudosPress={() => handleKudos(item)}
             onCommentPress={() => handleOpenComments(item)}
           />

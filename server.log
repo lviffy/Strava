@@ -1,0 +1,6 @@
+✅ Connected to PostgreSQL database
+🗺️  PostGIS Extension: 3.4 USE_GEOS=1 USE_PROJ=1 USE_STATS=1
+🚀 Strava Backend Server listening on port 4000
+📡 Health Check: http://localhost:4000/health
+🏃 API Base URL: http://localhost:4000/api/v1
+[0mGET /api/v1/health [32m200[0m 3.723 ms - 158[0m

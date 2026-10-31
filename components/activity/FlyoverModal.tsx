@@ -8,7 +8,7 @@ import {
   Dimensions,
 } from 'react-native';
 import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { Ionicons } from '@expo/vector-icons';
+import { X, AirplaneTilt, Play, Pause, ArrowCounterClockwise } from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
 import { LocalCoordinate } from '../../database/ActivityDao';
 import { formatDuration, formatDistance, formatSpeedKmh } from '../../features/recording/Calculations';
@@ -142,10 +142,10 @@ export function FlyoverModal({
             style={[styles.closeBtn, { backgroundColor: colors.surface }]}
             onPress={onClose}
           >
-            <Ionicons name="close" size={22} color={colors.textPrimary} />
+            <X size={22} color={colors.textPrimary} weight="bold" />
           </TouchableOpacity>
           <View style={[styles.titleBadge, { backgroundColor: colors.surface }]}>
-            <Ionicons name="airplane" size={14} color={colors.accent} style={{ marginRight: 6 }} />
+            <AirplaneTilt size={14} color={colors.accent} weight="fill" style={{ marginRight: 6 }} />
             <Text style={[styles.titleText, { color: colors.textPrimary }]} numberOfLines={1}>
               Flyover: {activityName}
             </Text>
@@ -192,12 +192,11 @@ export function FlyoverModal({
               onPress={togglePlay}
               activeOpacity={0.8}
             >
-              <Ionicons
-                name={isPlaying ? 'pause' : 'play'}
-                size={24}
-                color="#FFFFFF"
-                style={!isPlaying ? { marginLeft: 2 } : {}}
-              />
+              {isPlaying ? (
+                <Pause size={24} color="#FFFFFF" weight="fill" />
+              ) : (
+                <Play size={24} color="#FFFFFF" weight="fill" style={{ marginLeft: 2 }} />
+              )}
             </TouchableOpacity>
 
             {/* Restart Button */}
@@ -208,7 +207,7 @@ export function FlyoverModal({
                 setIsPlaying(true);
               }}
             >
-              <Ionicons name="refresh" size={16} color={colors.textPrimary} />
+              <ArrowCounterClockwise size={16} color={colors.textPrimary} weight="bold" />
             </TouchableOpacity>
           </View>
         </View>

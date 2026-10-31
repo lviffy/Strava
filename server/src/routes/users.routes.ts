@@ -4,7 +4,66 @@ import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
-// Get athlete profile by ID with aggregate workout stats
+// Athlete Search by name, city, or email (must be before /:id)
+router.get('/search', async (req: Request, res: Response) => {
+  try {
+    const q = ((req.query.q as string) || '').trim();
+    if (!q) {
+      const athletes = await prisma.user.findMany({
+        take: 10,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          avatarUrl: true,
+          city: true,
+          bio: true,
+          _count: {
+            select: {
+              followers: true,
+              activities: true,
+            },
+          },
+        },
+      });
+      res.json({ athletes });
+      return;
+    }
+
+    const athletes = await prisma.user.findMany({
+      where: {
+        OR: [
+          { firstName: { contains: q, mode: 'insensitive' } },
+          { lastName: { contains: q, mode: 'insensitive' } },
+          { email: { contains: q, mode: 'insensitive' } },
+          { city: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      take: 20,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+        city: true,
+        bio: true,
+        _count: {
+          select: {
+            followers: true,
+            activities: true,
+          },
+        },
+      },
+    });
+
+    res.json({ athletes });
+  } catch (error) {
+    console.error('Error searching athletes:', error);
+    res.status(500).json({ error: 'Failed to search athletes' });
+  }
+});
+
+// Get athlete profile by ID with aggregate workout stats and recent activities
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -48,6 +107,25 @@ router.get('/:id', async (req: Request, res: Response) => {
       },
     });
 
+    // Recent activities
+    const recentActivities = await prisma.activity.findMany({
+      where: { userId: id },
+      take: 5,
+      orderBy: { startTime: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        sportType: true,
+        startTime: true,
+        distanceMeters: true,
+        movingTimeSeconds: true,
+        elevationGainMeters: true,
+        _count: {
+          select: { kudos: true, comments: true },
+        },
+      },
+    });
+
     res.json({
       athlete: user,
       stats: {
@@ -58,6 +136,7 @@ router.get('/:id', async (req: Request, res: Response) => {
         totalElevationGainMeters: aggregates._sum.elevationGainMeters || 0,
         totalCalories: aggregates._sum.calories || 0,
       },
+      recentActivities,
     });
   } catch (error) {
     console.error('Error fetching athlete profile:', error);
@@ -99,6 +178,18 @@ router.post('/:id/follow', requireAuth, async (req: Request, res: Response) => {
         },
       });
       following = true;
+
+      // Create notification
+      const currentUser = await prisma.user.findUnique({ where: { id: currentUserId } });
+      await prisma.notification.create({
+        data: {
+          userId: targetUserId,
+          actorId: currentUserId,
+          type: 'follow',
+          title: 'New Follower',
+          message: `${currentUser?.firstName || 'An athlete'} started following you.`,
+        },
+      });
     }
 
     res.json({ following });

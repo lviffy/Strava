@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import { Ionicons } from '@expo/vector-icons';
+import { Bicycle, Footprints, NavigationArrow } from 'phosphor-react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ApiClient } from '../../services/ApiClient';
@@ -99,15 +99,37 @@ export default function MapsScreen() {
   const [filterSport, setFilterSport] = useState<FilterSportType>('All');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Fetch nearby segments from PostGIS backend
+  // Fetch routes and nearby segments from PostGIS backend
   const fetchNearbySegments = useCallback(async (lat: number, lng: number) => {
     setIsLoading(true);
     try {
       const sportParam = filterSport !== 'All' ? filterSport : undefined;
-      const res = await ApiClient.getNearbySegments(lat, lng, 20000, sportParam);
+      const [segmentsRes, routesRes] = await Promise.allSettled([
+        ApiClient.getNearbySegments(lat, lng, 20000, sportParam),
+        ApiClient.getRoutes(sportParam),
+      ]);
 
-      if (res && res.segments && res.segments.length > 0) {
-        const mappedRoutes: RouteItem[] = res.segments.map((s: any) => {
+      const combinedRoutes: RouteItem[] = [];
+
+      // 1. Add cloud routes
+      if (routesRes.status === 'fulfilled' && routesRes.value?.routes && routesRes.value.routes.length > 0) {
+        routesRes.value.routes.forEach((r: any) => {
+          combinedRoutes.push({
+            id: r.id,
+            name: r.name,
+            sportType: (r.sportType as SportType) || 'Run',
+            distanceKm: r.distanceKm || 5.0,
+            elevationGainM: r.elevationGainM || 120,
+            estTime: r.estTime || '35 min',
+            surface: r.surface || 'Paved Road',
+            coordinates: FALLBACK_ROUTES[0].coordinates,
+          });
+        });
+      }
+
+      // 2. Add PostGIS segments
+      if (segmentsRes.status === 'fulfilled' && segmentsRes.value?.segments && segmentsRes.value.segments.length > 0) {
+        segmentsRes.value.segments.forEach((s: any) => {
           const coords = [
             { latitude: s.startLatitude, longitude: s.startLongitude },
             {
@@ -121,7 +143,7 @@ export default function MapsScreen() {
           const avgPaceMin = s.sportType === 'Ride' ? 2.5 : 5.5;
           const estMin = Math.round(distKm * avgPaceMin);
 
-          return {
+          combinedRoutes.push({
             id: s.id,
             name: s.name,
             sportType: (s.sportType as SportType) || 'Run',
@@ -130,11 +152,13 @@ export default function MapsScreen() {
             estTime: `${estMin} min`,
             surface: 'Paved & Trail',
             coordinates: coords,
-          };
+          });
         });
+      }
 
-        setRoutes(mappedRoutes);
-        setSelectedRoute(mappedRoutes[0]);
+      if (combinedRoutes.length > 0) {
+        setRoutes(combinedRoutes);
+        setSelectedRoute(combinedRoutes[0]);
       }
     } catch {
       // Use fallback routes if offline
@@ -241,11 +265,19 @@ export default function MapsScreen() {
                     shadows.none,
                   ]}
                 >
-                  <Ionicons
-                    name={route.sportType === 'Ride' ? 'bicycle' : 'walk'}
-                    size={14}
-                    color={isSelected ? '#FFFFFF' : colors.textPrimary}
-                  />
+                  {route.sportType === 'Ride' ? (
+                    <Bicycle
+                      size={14}
+                      color={isSelected ? '#FFFFFF' : colors.textPrimary}
+                      weight="bold"
+                    />
+                  ) : (
+                    <Footprints
+                      size={14}
+                      color={isSelected ? '#FFFFFF' : colors.textPrimary}
+                      weight="bold"
+                    />
+                  )}
                 </View>
               </Marker>
             );
@@ -321,7 +353,7 @@ export default function MapsScreen() {
               size="lg"
               variant="primary"
               onPress={handleStartWithRoute}
-              icon={<Ionicons name="navigate-outline" size={18} color="#FFFFFF" />}
+              icon={<NavigationArrow size={18} color="#FFFFFF" weight="fill" />}
             />
           </View>
         )}

@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { X, ArrowUp, ChatCircle } from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
 import { ApiClient } from '../../services/ApiClient';
 import { useColorScheme } from '../useColorScheme';
@@ -93,7 +93,7 @@ export function CommentModal({
               style={styles.closeButton}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="close" size={22} color={colors.textPrimary} />
+              <X size={22} color={colors.textPrimary} weight="bold" />
             </TouchableOpacity>
           </View>
 
@@ -104,7 +104,7 @@ export function CommentModal({
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={
               <EmptyState
-                iconName="chatbubbles-outline"
+                icon={<ChatCircle size={32} color={colors.textSecondary} weight="regular" />}
                 title="No comments yet"
                 description="Be the first to congratulate the athlete on their effort!"
               />
@@ -174,7 +174,7 @@ export function CommentModal({
                 {isSubmitting ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Ionicons name="arrow-up" size={18} color="#FFFFFF" />
+                  <ArrowUp size={18} color="#FFFFFF" weight="bold" />
                 )}
               </TouchableOpacity>
             </View>

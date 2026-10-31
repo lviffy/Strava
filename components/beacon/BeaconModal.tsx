@@ -8,7 +8,16 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  X,
+  CheckCircle,
+  Link,
+  PlusCircle,
+  CheckSquare,
+  Square,
+  Trash,
+  ShieldCheck,
+} from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
 import { BeaconDao, BeaconContact } from '../../database/BeaconDao';
 import { BeaconService } from '../../features/beacon/BeaconService';
@@ -110,7 +119,7 @@ export function BeaconModal({ visible, onClose, sportType = 'Run' }: BeaconModal
               <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Strava Beacon Safety</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
-              <Ionicons name="close" size={22} color={colors.textSecondary} />
+              <X size={22} color={colors.textSecondary} weight="bold" />
             </TouchableOpacity>
           </View>
 
@@ -143,12 +152,21 @@ export function BeaconModal({ visible, onClose, sportType = 'Run' }: BeaconModal
                 onPress={handleCopyLink}
                 activeOpacity={0.8}
               >
-                <Ionicons
-                  name={copied ? 'checkmark-circle' : 'link-outline'}
-                  size={18}
-                  color={copied ? colors.success : colors.accent}
-                  style={styles.copyIcon}
-                />
+                {copied ? (
+                  <CheckCircle
+                    size={18}
+                    color={colors.success}
+                    weight="fill"
+                    style={styles.copyIcon}
+                  />
+                ) : (
+                  <Link
+                    size={18}
+                    color={colors.accent}
+                    weight="bold"
+                    style={styles.copyIcon}
+                  />
+                )}
                 <Text
                   style={[
                     styles.copyText,
@@ -171,11 +189,11 @@ export function BeaconModal({ visible, onClose, sportType = 'Run' }: BeaconModal
                 onPress={() => setShowAddForm(!showAddForm)}
                 style={styles.addContactTrigger}
               >
-                <Ionicons
-                  name={showAddForm ? 'close' : 'add-circle-outline'}
-                  size={20}
-                  color={colors.accent}
-                />
+                {showAddForm ? (
+                  <X size={20} color={colors.accent} weight="bold" />
+                ) : (
+                  <PlusCircle size={20} color={colors.accent} weight="bold" />
+                )}
                 <Text style={[styles.addContactText, { color: colors.accent }]}>
                   {showAddForm ? 'Cancel' : 'Add Contact'}
                 </Text>
@@ -242,11 +260,11 @@ export function BeaconModal({ visible, onClose, sportType = 'Run' }: BeaconModal
                     onPress={() => handleToggleContact(c)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons
-                      name={c.is_active ? 'checkbox' : 'square-outline'}
-                      size={22}
-                      color={c.is_active ? colors.accent : colors.textMuted}
-                    />
+                    {c.is_active ? (
+                      <CheckSquare size={22} color={colors.accent} weight="fill" />
+                    ) : (
+                      <Square size={22} color={colors.textMuted} weight="regular" />
+                    )}
                   </TouchableOpacity>
 
                   <View style={styles.contactMain}>
@@ -261,7 +279,7 @@ export function BeaconModal({ visible, onClose, sportType = 'Run' }: BeaconModal
                     style={styles.contactDelete}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+                    <Trash size={18} color={colors.textMuted} weight="bold" />
                   </TouchableOpacity>
                 </View>
               ))
@@ -269,7 +287,7 @@ export function BeaconModal({ visible, onClose, sportType = 'Run' }: BeaconModal
 
             {/* Protocol Explanation */}
             <View style={styles.footerNote}>
-              <Ionicons name="shield-checkmark-outline" size={16} color={colors.accent} style={styles.shieldIcon} />
+              <ShieldCheck size={16} color={colors.accent} weight="fill" style={styles.shieldIcon} />
               <Text style={[styles.footerText, { color: colors.textSecondary }]}>
                 Strava Beacon transmits encrypted, real-time GPS telemetry directly to your browser-accessible emergency stream.
               </Text>

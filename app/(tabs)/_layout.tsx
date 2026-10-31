@@ -1,7 +1,18 @@
 import React from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { View, Text, StyleSheet, Platform, TouchableOpacity, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  House,
+  Compass,
+  Record,
+  Users,
+  User,
+  Lightning,
+  Plus,
+  MagnifyingGlass,
+  ChatCircleDots,
+  Bell,
+} from 'phosphor-react-native';
 import { useColorScheme } from '../../components/useColorScheme';
 import theme, { radii, borders, shadows, spacing, typography } from '../../constants/theme';
 
@@ -49,10 +60,10 @@ export default function TabLayout() {
           headerTitle: () => (
             <TouchableOpacity
               style={[styles.upgradeHeaderBtn, { borderColor: colors.border, backgroundColor: colors.surfaceSecondary }]}
-              onPress={() => Alert.alert('Strava Subscription', 'Athlete Intelligence, 3D Flyover, and Race Predictions are unlocked.')}
+              onPress={() => router.push('/subscription')}
               activeOpacity={0.8}
             >
-              <Ionicons name="flame" size={13} color={colors.accent} style={{ marginRight: 4 }} />
+              <Lightning size={14} color={colors.accent} weight="fill" style={{ marginRight: 4 }} />
               <Text style={[styles.upgradeHeaderText, { color: colors.textPrimary }]}>Upgrade</Text>
             </TouchableOpacity>
           ),
@@ -63,14 +74,14 @@ export default function TabLayout() {
                 onPress={() => router.push('/(tabs)/record')}
                 activeOpacity={0.7}
               >
-                <Ionicons name="add" size={18} color={colors.textPrimary} />
+                <Plus size={18} color={colors.textPrimary} weight="bold" />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.headerCircleBtn, { backgroundColor: colors.surfaceSecondary }]}
-                onPress={() => router.push('/(tabs)/maps')}
+                onPress={() => router.push('/search')}
                 activeOpacity={0.7}
               >
-                <Ionicons name="search" size={15} color={colors.textPrimary} />
+                <MagnifyingGlass size={16} color={colors.textPrimary} weight="bold" />
               </TouchableOpacity>
             </View>
           ),
@@ -78,25 +89,25 @@ export default function TabLayout() {
             <View style={styles.headerGroup}>
               <TouchableOpacity
                 style={[styles.headerCircleBtn, { backgroundColor: colors.surfaceSecondary }]}
-                onPress={() => Alert.alert('Messages', 'Direct messaging and club chats.')}
+                onPress={() => Alert.alert('Direct Messages', 'Direct messages and club channel chats are active for verified athletes.')}
                 activeOpacity={0.7}
               >
-                <Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.textPrimary} />
+                <ChatCircleDots size={17} color={colors.textPrimary} weight="regular" />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.headerCircleBtn, { backgroundColor: colors.surfaceSecondary }]}
-                onPress={() => Alert.alert('Notifications', 'You have 3 new notifications.')}
+                onPress={() => router.push('/notifications')}
                 activeOpacity={0.7}
               >
-                <Ionicons name="notifications-outline" size={16} color={colors.textPrimary} />
+                <Bell size={17} color={colors.textPrimary} weight="regular" />
                 <View style={styles.notifBadge}>
-                  <Text style={styles.notifBadgeText}>3</Text>
+                  <Text style={styles.notifBadgeText}>2</Text>
                 </View>
               </TouchableOpacity>
             </View>
           ),
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} size={22} color={color as string} />
+            <House size={22} color={color as string} weight={focused ? 'fill' : 'regular'} />
           ),
         }}
       />
@@ -106,7 +117,7 @@ export default function TabLayout() {
           title: 'Maps',
           headerTitle: 'Explore Routes',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'map' : 'map-outline'} size={22} color={color as string} />
+            <Compass size={22} color={color as string} weight={focused ? 'fill' : 'regular'} />
           ),
         }}
       />
@@ -117,7 +128,7 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ focused }) => (
             <View style={[styles.recordTabButton, { backgroundColor: colors.accent, borderColor: colors.surface }]}>
-              <Ionicons name="radio-button-on" size={26} color="#FFFFFF" />
+              <Record size={26} color="#FFFFFF" weight="fill" />
             </View>
           ),
           tabBarLabel: () => null,
@@ -129,7 +140,7 @@ export default function TabLayout() {
           title: 'Groups',
           headerTitle: 'Clubs & Challenges',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'people' : 'people-outline'} size={22} color={color as string} />
+            <Users size={22} color={color as string} weight={focused ? 'fill' : 'regular'} />
           ),
         }}
       />
@@ -139,7 +150,7 @@ export default function TabLayout() {
           title: 'You',
           headerShown: false,
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} size={22} color={color as string} />
+            <User size={22} color={color as string} weight={focused ? 'fill' : 'regular'} />
           ),
         }}
       />

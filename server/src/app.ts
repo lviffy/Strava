@@ -5,6 +5,11 @@ import authRoutes from './routes/auth.routes';
 import activityRoutes from './routes/activities.routes';
 import segmentRoutes from './routes/segments.routes';
 import userRoutes from './routes/users.routes';
+import notificationRoutes from './routes/notifications.routes';
+import clubRoutes from './routes/clubs.routes';
+import challengeRoutes from './routes/challenges.routes';
+import subscriptionRoutes from './routes/subscriptions.routes';
+import routeRoutes from './routes/routes.routes';
 import { prisma } from './db';
 
 const app = express();
@@ -12,12 +17,11 @@ const app = express();
 // Middlewares
 app.use(cors());
 app.use(morgan('dev'));
-// Large JSON limit to comfortably support uploading 10,000+ GPS coordinates
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // Health Check with PostGIS status
-app.get('/health', async (_req: Request, res: Response) => {
+const healthHandler = async (_req: Request, res: Response) => {
   try {
     const postgisVersion = await prisma.$queryRaw<Array<{ postgis_version: string }>>`
       SELECT PostGIS_Version();
@@ -36,13 +40,27 @@ app.get('/health', async (_req: Request, res: Response) => {
       error: 'Database connection failed',
     });
   }
-});
+};
 
-// API Routes
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/activities', activityRoutes);
-app.use('/api/v1/segments', segmentRoutes);
-app.use('/api/v1/users', userRoutes);
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
+app.get('/api/v1/health', healthHandler);
+
+// Helper function to mount routes on both prefixes
+function mountRoutes(prefix: string) {
+  app.use(`${prefix}/auth`, authRoutes);
+  app.use(`${prefix}/activities`, activityRoutes);
+  app.use(`${prefix}/segments`, segmentRoutes);
+  app.use(`${prefix}/users`, userRoutes);
+  app.use(`${prefix}/notifications`, notificationRoutes);
+  app.use(`${prefix}/clubs`, clubRoutes);
+  app.use(`${prefix}/challenges`, challengeRoutes);
+  app.use(`${prefix}/subscriptions`, subscriptionRoutes);
+  app.use(`${prefix}/routes`, routeRoutes);
+}
+
+mountRoutes('/api/v1');
+mountRoutes('/api');
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

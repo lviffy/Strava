@@ -9,7 +9,14 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Lightning,
+  WarningCircle,
+  EnvelopeSimple,
+  Lock,
+  Eye,
+  EyeSlash,
+} from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../../store/useAuthStore';
 import { ApiClient } from '../../services/ApiClient';
@@ -75,7 +82,7 @@ export default function LoginScreen() {
           {/* Logo & Header */}
           <View style={styles.headerContainer}>
             <View style={[styles.logoBadge, { backgroundColor: colors.accent }]}>
-              <Ionicons name="flame" size={32} color="#FFFFFF" />
+              <Lightning size={32} color="#FFFFFF" weight="fill" />
             </View>
             <Text style={[styles.brandTitle, { color: colors.textPrimary }]}>STRAVA</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -86,7 +93,7 @@ export default function LoginScreen() {
           {/* Error Banner */}
           {error ? (
             <View style={[styles.errorBanner, { backgroundColor: colors.surfaceSecondary, borderColor: colors.error }]}>
-              <Ionicons name="alert-circle-outline" size={18} color={colors.error} style={{ marginRight: 8 }} />
+              <WarningCircle size={18} color={colors.error} weight="bold" style={{ marginRight: 8 }} />
               <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
             </View>
           ) : null}
@@ -104,7 +111,7 @@ export default function LoginScreen() {
               autoCapitalize="none"
               keyboardType="email-address"
               autoCorrect={false}
-              leftIcon={<Ionicons name="mail-outline" size={18} color={colors.textSecondary} />}
+              leftIcon={<EnvelopeSimple size={18} color={colors.textSecondary} weight="bold" />}
             />
 
             <InputText
@@ -117,13 +124,13 @@ export default function LoginScreen() {
               }}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
-              leftIcon={<Ionicons name="lock-closed-outline" size={18} color={colors.textSecondary} />}
+              leftIcon={<Lock size={18} color={colors.textSecondary} weight="bold" />}
               rightIcon={
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={18}
-                  color={colors.textSecondary}
-                />
+                showPassword ? (
+                  <EyeSlash size={18} color={colors.textSecondary} weight="bold" />
+                ) : (
+                  <Eye size={18} color={colors.textSecondary} weight="bold" />
+                )
               }
               onRightIconPress={() => setShowPassword(!showPassword)}
             />
@@ -146,7 +153,7 @@ export default function LoginScreen() {
               variant="secondary"
               onPress={handleDemoSignIn}
               disabled={isLoading}
-              icon={<Ionicons name="flash-outline" size={18} color={colors.accent} />}
+              icon={<Lightning size={18} color={colors.accent} weight="fill" />}
               style={styles.actionBtn}
             />
           </View>

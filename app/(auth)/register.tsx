@@ -9,7 +9,14 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  WarningCircle,
+  MapPin,
+  EnvelopeSimple,
+  Lock,
+  Eye,
+  EyeSlash,
+} from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useColorScheme } from '../../components/useColorScheme';
@@ -84,7 +91,7 @@ export default function RegisterScreen() {
           {/* Error Banner */}
           {error ? (
             <View style={[styles.errorBanner, { backgroundColor: colors.surfaceSecondary, borderColor: colors.error }]}>
-              <Ionicons name="alert-circle-outline" size={18} color={colors.error} style={{ marginRight: 8 }} />
+              <WarningCircle size={18} color={colors.error} weight="bold" style={{ marginRight: 8 }} />
               <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
             </View>
           ) : null}
@@ -124,7 +131,7 @@ export default function RegisterScreen() {
               value={city}
               onChangeText={setCity}
               autoCapitalize="words"
-              leftIcon={<Ionicons name="location-outline" size={18} color={colors.textSecondary} />}
+              leftIcon={<MapPin size={18} color={colors.textSecondary} weight="bold" />}
             />
 
             <InputText
@@ -138,7 +145,7 @@ export default function RegisterScreen() {
               autoCapitalize="none"
               keyboardType="email-address"
               autoCorrect={false}
-              leftIcon={<Ionicons name="mail-outline" size={18} color={colors.textSecondary} />}
+              leftIcon={<EnvelopeSimple size={18} color={colors.textSecondary} weight="bold" />}
             />
 
             <InputText
@@ -151,13 +158,13 @@ export default function RegisterScreen() {
               }}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
-              leftIcon={<Ionicons name="lock-closed-outline" size={18} color={colors.textSecondary} />}
+              leftIcon={<Lock size={18} color={colors.textSecondary} weight="bold" />}
               rightIcon={
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={18}
-                  color={colors.textSecondary}
-                />
+                showPassword ? (
+                  <EyeSlash size={18} color={colors.textSecondary} weight="bold" />
+                ) : (
+                  <Eye size={18} color={colors.textSecondary} weight="bold" />
+                )
               }
               onRightIconPress={() => setShowPassword(!showPassword)}
             />

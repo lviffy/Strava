@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ArrowLeft } from 'phosphor-react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '../useColorScheme';
 import theme, { typography, spacing } from '../../constants/theme';
@@ -42,7 +42,7 @@ export function ScreenHeader({
             style={styles.backButton}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
+            <ArrowLeft size={22} color={colors.textPrimary} weight="bold" />
           </TouchableOpacity>
         )}
         <View style={styles.titleWrapper}>

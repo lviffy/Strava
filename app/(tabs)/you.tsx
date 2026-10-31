@@ -7,7 +7,17 @@ import {
   Alert,
   TouchableOpacity,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  GearSix,
+  SignOut,
+  CloudArrowUp,
+  CloudCheck,
+  PlusCircle,
+  Bicycle,
+  Footprints,
+  ShieldCheck,
+  Lock,
+} from 'phosphor-react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ActivityDao, LocalActivity } from '../../database/ActivityDao';
@@ -159,10 +169,16 @@ export default function YouProfileScreen() {
       <ScreenHeader
         title="You"
         rightAction={
-          <IconButton
-            icon={<Ionicons name="log-out-outline" size={20} color={colors.textSecondary} />}
-            onPress={handleLogout}
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+            <IconButton
+              icon={<GearSix size={20} color={colors.textSecondary} />}
+              onPress={() => router.push('/settings')}
+            />
+            <IconButton
+              icon={<SignOut size={20} color={colors.textSecondary} />}
+              onPress={handleLogout}
+            />
+          </View>
         }
       />
 
@@ -237,11 +253,11 @@ export default function YouProfileScreen() {
         {/* Cloud Sync Status Bar */}
         <SurfaceCard style={styles.syncCard}>
           <View style={styles.syncLeft}>
-            <Ionicons
-              name={pendingSyncCount > 0 ? 'cloud-upload-outline' : 'cloud-done-outline'}
-              size={18}
-              color={pendingSyncCount > 0 ? colors.accent : colors.success}
-            />
+            {pendingSyncCount > 0 ? (
+              <CloudArrowUp size={18} color={colors.accent} weight="bold" />
+            ) : (
+              <CloudCheck size={18} color={colors.success} weight="bold" />
+            )}
             <Text style={[styles.syncStatusText, { color: colors.textPrimary }]}>
               {pendingSyncCount > 0
                 ? `${pendingSyncCount} ${pendingSyncCount === 1 ? 'activity' : 'activities'} waiting to sync`
@@ -339,7 +355,7 @@ export default function YouProfileScreen() {
               style={styles.addGearBtn}
               activeOpacity={0.7}
             >
-              <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
+              <PlusCircle size={18} color={colors.accent} weight="bold" />
               <Text style={[styles.addGearText, { color: colors.accent }]}>Add Gear</Text>
             </TouchableOpacity>
           </View>
@@ -364,11 +380,11 @@ export default function YouProfileScreen() {
                   ]}
                 >
                   <View style={styles.gearIconBox}>
-                    <Ionicons
-                      name={g.type === 'Bike' ? 'bicycle' : 'footsteps'}
-                      size={20}
-                      color={colors.accent}
-                    />
+                    {g.type === 'Bike' ? (
+                      <Bicycle size={20} color={colors.accent} weight="bold" />
+                    ) : (
+                      <Footprints size={20} color={colors.accent} weight="bold" />
+                    )}
                   </View>
                   <View style={styles.gearMainInfo}>
                     <View style={styles.gearTitleRow}>
@@ -411,7 +427,7 @@ export default function YouProfileScreen() {
               onPress={() => setShowBeaconModal(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name="shield-checkmark" size={20} color={colors.accent} style={{ marginBottom: 4 }} />
+              <ShieldCheck size={20} color={colors.accent} weight="fill" style={{ marginBottom: 4 }} />
               <Text style={[styles.safetyToolTitle, { color: colors.textPrimary }]}>Beacon Safety</Text>
               <Text style={[styles.safetyToolSub, { color: colors.textSecondary }]}>Live location stream</Text>
             </TouchableOpacity>
@@ -424,7 +440,7 @@ export default function YouProfileScreen() {
               onPress={() => setShowPrivacyModal(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name="lock-closed" size={20} color={colors.accent} style={{ marginBottom: 4 }} />
+              <Lock size={20} color={colors.accent} weight="fill" style={{ marginBottom: 4 }} />
               <Text style={[styles.safetyToolTitle, { color: colors.textPrimary }]}>Privacy Zones</Text>
               <Text style={[styles.safetyToolSub, { color: colors.textSecondary }]}>Geofence redaction</Text>
             </TouchableOpacity>

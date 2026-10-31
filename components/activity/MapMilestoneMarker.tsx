@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { Marker } from 'react-native-maps';
-import { Ionicons } from '@expo/vector-icons';
+import { Trophy } from 'phosphor-react-native';
 import { radii, typography, borders } from '../../constants/theme';
 
 interface MapMilestoneMarkerProps {
@@ -24,7 +24,7 @@ export function MapMilestoneMarker({
         {/* Callout Label Bubble */}
         <View style={styles.calloutBubble}>
           <View style={styles.trophyIconBox}>
-            <Ionicons name="trophy" size={10} color="#F59E0B" />
+            <Trophy size={10} color="#F59E0B" weight="fill" />
           </View>
           <Text style={styles.labelText} numberOfLines={1}>
             {label}

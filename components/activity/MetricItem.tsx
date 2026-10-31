@@ -11,6 +11,7 @@ interface MetricItemProps {
   unit?: string;
   size?: MetricSize;
   align?: 'left' | 'center' | 'right';
+  icon?: React.ReactNode;
 }
 
 export function MetricItem({
@@ -19,6 +20,7 @@ export function MetricItem({
   unit,
   size = 'medium',
   align = 'left',
+  icon,
 }: MetricItemProps) {
   const colorScheme = useColorScheme() ?? 'dark';
   const colors = theme.theme[colorScheme];
@@ -39,7 +41,12 @@ export function MetricItem({
 
   return (
     <View style={[styles.container, alignmentStyle]}>
-      <Text style={[styles.label, labelStyle, { color: colors.textSecondary }]}>
+      <Text
+        style={[styles.label, labelStyle, { color: colors.textSecondary }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+      >
         {label.toUpperCase()}
       </Text>
       <View style={styles.valueRow}>
@@ -53,6 +60,7 @@ export function MetricItem({
         {unit ? (
           <Text style={[styles.unit, { color: colors.textSecondary }]}> {unit}</Text>
         ) : null}
+        {icon ? <View style={{ marginLeft: 4 }}>{icon}</View> : null}
       </View>
     </View>
   );
@@ -61,6 +69,7 @@ export function MetricItem({
 const styles = StyleSheet.create({
   container: {
     justifyContent: 'center',
+    width: '100%',
   },
   alignLeft: {
     alignItems: 'flex-start',
@@ -73,6 +82,8 @@ const styles = StyleSheet.create({
   },
   label: {
     marginBottom: spacing.xs,
+    fontSize: 10,
+    letterSpacing: 0.2,
   },
   valueRow: {
     flexDirection: 'row',

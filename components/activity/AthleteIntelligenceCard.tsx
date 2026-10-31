@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Modal } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Sparkle, CaretRight, X } from 'phosphor-react-native';
 import { ActivityInsight } from '../../database/InsightsDao';
 import { useColorScheme } from '../useColorScheme';
 import theme, { spacing, typography, radii, borders } from '../../constants/theme';
@@ -23,10 +23,10 @@ export function AthleteIntelligenceCard({ insight }: AthleteIntelligenceCardProp
         onPress={() => setModalVisible(true)}
         activeOpacity={0.8}
       >
-        {/* Header Row: Flame Icon + Athlete Intelligence */}
+        {/* Header Row: Sparkle Icon + Athlete Intelligence */}
         <View style={styles.headerRow}>
           <View style={styles.flameIconBox}>
-            <Ionicons name="flame" size={16} color={colors.accent} />
+            <Sparkle size={16} color={colors.accent} weight="fill" />
           </View>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
             Athlete Intelligence
@@ -41,7 +41,7 @@ export function AthleteIntelligenceCard({ insight }: AthleteIntelligenceCardProp
         {/* Footer Chevron */}
         <View style={styles.footerRow}>
           <View style={styles.spacer} />
-          <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+          <CaretRight size={16} color={colors.textSecondary} weight="bold" />
         </View>
       </TouchableOpacity>
 
@@ -57,14 +57,14 @@ export function AthleteIntelligenceCard({ insight }: AthleteIntelligenceCardProp
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTitleRow}>
                 <View style={styles.flameIconBox}>
-                  <Ionicons name="flame" size={18} color={colors.accent} />
+                  <Sparkle size={18} color={colors.accent} weight="fill" />
                 </View>
                 <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
                   Athlete Intelligence
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="close" size={22} color={colors.textSecondary} />
+                <X size={20} color={colors.textSecondary} weight="bold" />
               </TouchableOpacity>
             </View>
 

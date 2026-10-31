@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Trophy } from 'phosphor-react-native';
 import theme, { radii, typography } from '../../constants/theme';
 
 interface PrBadgeProps {
@@ -26,7 +26,7 @@ export function PrBadge({ rank = 1, size = 32, label }: PrBadgeProps) {
 
   return (
     <View style={[styles.container, { width: size, height: size, backgroundColor: bgColor }]}>
-      <Ionicons name="trophy" size={iconSize} color={textColor} />
+      <Trophy size={iconSize} color={textColor} weight="fill" />
       <Text style={[styles.badgeText, { fontSize: Math.max(8, Math.round(size * 0.28)) }]}>
         {label || badgeText}
       </Text>

@@ -11,7 +11,17 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Flag,
+  NavigationArrow,
+  X,
+  ShieldCheck,
+  SpeakerHigh,
+  SpeakerSlash,
+  Play,
+  Pause,
+  Stop,
+} from 'phosphor-react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
@@ -215,7 +225,7 @@ export default function RecordScreen() {
           {coordinates.length > 0 && (
             <Marker coordinate={coordinates[0]} title="Start">
               <View style={[styles.startMarker, { backgroundColor: colors.success, borderColor: '#FFFFFF' }]}>
-                <Ionicons name="flag" size={12} color="#FFFFFF" />
+                <Flag size={12} color="#FFFFFF" weight="fill" />
               </View>
             </Marker>
           )}
@@ -233,7 +243,7 @@ export default function RecordScreen() {
               },
             ]}
           >
-            <Ionicons name="navigate-outline" size={16} color={colors.routeColor} style={{ marginRight: 6 }} />
+            <NavigationArrow size={16} color={colors.routeColor} weight="fill" style={{ marginRight: 6 }} />
             <Text style={[styles.routeBannerText, { color: colors.textPrimary }]} numberOfLines={1}>
               Guide: {selectedRoute.name}
             </Text>
@@ -242,7 +252,7 @@ export default function RecordScreen() {
               style={styles.routeBannerClose}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="close" size={16} color={colors.textSecondary} />
+              <X size={16} color={colors.textSecondary} weight="bold" />
             </TouchableOpacity>
           </View>
         )}
@@ -291,10 +301,10 @@ export default function RecordScreen() {
               onPress={() => setShowBeaconModal(true)}
               activeOpacity={0.8}
             >
-              <Ionicons
-                name="shield-checkmark"
+              <ShieldCheck
                 size={14}
                 color={status === 'RECORDING' ? '#FFFFFF' : colors.accent}
+                weight="fill"
                 style={{ marginRight: 4 }}
               />
               <Text
@@ -327,11 +337,11 @@ export default function RecordScreen() {
               }}
               activeOpacity={0.8}
             >
-              <Ionicons
-                name={audioCuesEnabled ? 'volume-high' : 'volume-mute-outline'}
-                size={14}
-                color={audioCuesEnabled ? '#FFFFFF' : colors.textSecondary}
-              />
+              {audioCuesEnabled ? (
+                <SpeakerHigh size={14} color="#FFFFFF" weight="bold" />
+              ) : (
+                <SpeakerSlash size={14} color={colors.textSecondary} weight="bold" />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -408,7 +418,7 @@ export default function RecordScreen() {
               size="lg"
               variant="primary"
               onPress={handleStart}
-              icon={<Ionicons name="play" size={20} color="#FFFFFF" />}
+              icon={<Play size={20} color="#FFFFFF" weight="fill" />}
               style={styles.fullWidthButton}
             />
           )}
@@ -420,7 +430,7 @@ export default function RecordScreen() {
                 variant="secondary"
                 size="lg"
                 onPress={handleLap}
-                icon={<Ionicons name="flag-outline" size={18} color={colors.textPrimary} />}
+                icon={<Flag size={18} color={colors.textPrimary} weight="bold" />}
                 style={styles.halfButton}
               />
               <Button
@@ -428,7 +438,7 @@ export default function RecordScreen() {
                 variant="primary"
                 size="lg"
                 onPress={handlePause}
-                icon={<Ionicons name="pause" size={20} color="#FFFFFF" />}
+                icon={<Pause size={20} color="#FFFFFF" weight="fill" />}
                 style={styles.halfButton}
               />
             </View>
@@ -441,7 +451,7 @@ export default function RecordScreen() {
                 variant="primary"
                 size="lg"
                 onPress={handleResume}
-                icon={<Ionicons name="play" size={20} color="#FFFFFF" />}
+                icon={<Play size={20} color="#FFFFFF" weight="fill" />}
                 style={styles.halfButton}
               />
               <Button
@@ -449,7 +459,7 @@ export default function RecordScreen() {
                 variant="destructive"
                 size="lg"
                 onPress={handleFinish}
-                icon={<Ionicons name="stop" size={20} color="#FFFFFF" />}
+                icon={<Stop size={20} color="#FFFFFF" weight="fill" />}
                 style={styles.halfButton}
               />
             </View>

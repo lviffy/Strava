@@ -11,7 +11,20 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import MapView, { Polyline, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Bookmark,
+  Scissors,
+  DownloadSimple,
+  Trash,
+  Lock,
+  Flag,
+  Play,
+  Footprints,
+  Bicycle,
+  X,
+  Check,
+  Copy,
+} from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
 import { ActivityDao, LocalActivity, LocalCoordinate, LocalSplit } from '../../database/ActivityDao';
 import { GearDao, GearItem } from '../../database/GearDao';
@@ -234,10 +247,10 @@ export default function ActivityDetailScreen() {
           <View style={styles.headerActions}>
             <IconButton
               icon={
-                <Ionicons
-                  name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                <Bookmark
                   size={20}
                   color={isBookmarked ? colors.accent : colors.textPrimary}
+                  weight={isBookmarked ? 'fill' : 'regular'}
                 />
               }
               onPress={() => {
@@ -246,15 +259,15 @@ export default function ActivityDetailScreen() {
               }}
             />
             <IconButton
-              icon={<Ionicons name="cut-outline" size={20} color={colors.textPrimary} />}
+              icon={<Scissors size={20} color={colors.textPrimary} weight="bold" />}
               onPress={() => setShowCropModal(true)}
             />
             <IconButton
-              icon={<Ionicons name="download-outline" size={20} color={colors.textPrimary} />}
+              icon={<DownloadSimple size={20} color={colors.textPrimary} weight="bold" />}
               onPress={handleExportGpx}
             />
             <IconButton
-              icon={<Ionicons name="trash-outline" size={20} color={colors.error} />}
+              icon={<Trash size={20} color={colors.error} weight="bold" />}
               onPress={handleDelete}
             />
           </View>
@@ -270,7 +283,7 @@ export default function ActivityDetailScreen() {
               { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
             ]}
           >
-            <Ionicons name="lock-closed" size={14} color={colors.accent} style={{ marginRight: 6 }} />
+            <Lock size={14} color={colors.accent} weight="fill" style={{ marginRight: 6 }} />
             <Text style={[styles.privacyBannerText, { color: colors.textSecondary }]}>
               Privacy Zone Applied ({privacyResult.zonesApplied.join(', ')}): Start/Finish concealed ({privacyResult.redactedCount} pts).
             </Text>
@@ -299,14 +312,14 @@ export default function ActivityDetailScreen() {
               {/* Start Flag Marker */}
               <Marker coordinate={mapCoords[0]} title="Start">
                 <View style={[styles.startMarker, { backgroundColor: colors.success }]}>
-                  <Ionicons name="flag" size={10} color="#FFFFFF" />
+                  <Flag size={10} color="#FFFFFF" weight="fill" />
                 </View>
               </Marker>
 
               {/* Finish Checkered Marker */}
               <Marker coordinate={mapCoords[mapCoords.length - 1]} title="Finish">
                 <View style={[styles.startMarker, { backgroundColor: colors.error }]}>
-                  <Ionicons name="flag" size={10} color="#FFFFFF" />
+                  <Flag size={10} color="#FFFFFF" weight="fill" />
                 </View>
               </Marker>
 
@@ -333,7 +346,7 @@ export default function ActivityDetailScreen() {
               }}
               activeOpacity={0.8}
             >
-              <Ionicons name="play" size={20} color="#FFFFFF" style={{ marginLeft: 2 }} />
+              <Play size={20} color="#FFFFFF" weight="fill" style={{ marginLeft: 2 }} />
             </TouchableOpacity>
           </View>
         )}
@@ -346,7 +359,7 @@ export default function ActivityDetailScreen() {
               Rohan Mohanta
             </Text>
             <View style={styles.athleteLocationRow}>
-              <Ionicons name="footsteps-outline" size={12} color={colors.textSecondary} style={{ marginRight: 4 }} />
+              <Footprints size={12} color={colors.textSecondary} weight="bold" style={{ marginRight: 4 }} />
               <Text style={[styles.athleteDateCity, { color: colors.textSecondary }]}>
                 {new Date(activity.start_timestamp).toLocaleString('en-US', {
                   month: 'long',
@@ -470,12 +483,11 @@ export default function ActivityDetailScreen() {
           <SurfaceCard style={styles.gearCard}>
             <View style={styles.gearCardHeader}>
               <View style={styles.gearCardLeft}>
-                <Ionicons
-                  name={gear.type === 'Bike' ? 'bicycle' : 'footsteps'}
-                  size={20}
-                  color={colors.accent}
-                  style={{ marginRight: 8 }}
-                />
+                {gear.type === 'Bike' ? (
+                  <Bicycle size={20} color={colors.accent} weight="bold" style={{ marginRight: 8 }} />
+                ) : (
+                  <Footprints size={20} color={colors.accent} weight="bold" style={{ marginRight: 8 }} />
+                )}
                 <Text style={[styles.gearCardTitle, { color: colors.textPrimary }]}>{gear.name}</Text>
               </View>
               <Text style={[styles.gearCardDist, { color: colors.textSecondary }]}>
@@ -525,11 +537,11 @@ export default function ActivityDetailScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.borderSubtle }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="download" size={20} color={colors.accent} style={{ marginRight: 8 }} />
+                <DownloadSimple size={20} color={colors.accent} weight="bold" style={{ marginRight: 8 }} />
                 <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Export Standard GPX</Text>
               </View>
               <TouchableOpacity onPress={() => setShowGpxModal(false)} style={{ padding: 4 }}>
-                <Ionicons name="close" size={22} color={colors.textSecondary} />
+                <X size={22} color={colors.textSecondary} weight="bold" />
               </TouchableOpacity>
             </View>
 
@@ -549,7 +561,7 @@ export default function ActivityDetailScreen() {
                   title={gpxCopied ? 'Copied to Clipboard!' : 'Copy GPX XML'}
                   variant="primary"
                   onPress={handleCopyGpx}
-                  icon={<Ionicons name={gpxCopied ? 'checkmark' : 'copy-outline'} size={18} color="#FFFFFF" />}
+                  icon={gpxCopied ? <Check size={18} color="#FFFFFF" weight="bold" /> : <Copy size={18} color="#FFFFFF" weight="bold" />}
                 />
               </View>
             </ScrollView>

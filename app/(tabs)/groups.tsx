@@ -4,10 +4,13 @@ import {
   View,
   Text,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { Trophy, Medal, ShieldCheck } from 'phosphor-react-native';
 import * as Haptics from 'expo-haptics';
 import { ActivityDao } from '../../database/ActivityDao';
+import { ApiClient } from '../../services/ApiClient';
 import { useColorScheme } from '../../components/useColorScheme';
 import theme, { radii, spacing, typography, borders } from '../../constants/theme';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
@@ -24,7 +27,8 @@ interface Challenge {
   targetKm: number;
   currentKm: number;
   daysRemaining: number;
-  badgeIcon: keyof typeof Ionicons.glyphMap;
+  badgeIcon?: string;
+  badgeType?: 'medal' | 'trophy' | 'ribbon';
   joined: boolean;
 }
 
@@ -68,6 +72,7 @@ const TABS = ['Challenges', 'Clubs'] as const;
 type TabType = typeof TABS[number];
 
 export default function GroupsScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'dark';
   const colors = theme.theme[colorScheme];
   const [activeTab, setActiveTab] = useState<TabType>('Challenges');
@@ -106,6 +111,29 @@ export default function GroupsScreen() {
     },
   ]);
 
+  // Load from API with local fallback
+  useEffect(() => {
+    async function loadApiData() {
+      try {
+        const [challengesRes, clubsRes] = await Promise.allSettled([
+          ApiClient.getChallenges(),
+          ApiClient.getClubs(),
+        ]);
+
+        if (challengesRes.status === 'fulfilled' && challengesRes.value?.challenges) {
+          setChallenges(challengesRes.value.challenges);
+        }
+
+        if (clubsRes.status === 'fulfilled' && clubsRes.value?.clubs) {
+          setClubs(clubsRes.value.clubs);
+        }
+      } catch (err) {
+        console.log('Using offline groups fallback:', err);
+      }
+    }
+    loadApiData();
+  }, []);
+
   // Dynamically calculate user's actual mileage for challenges
   useEffect(() => {
     async function calculateMileage() {
@@ -126,9 +154,9 @@ export default function GroupsScreen() {
         setChallenges((prev) =>
           prev.map((c) => {
             if (c.sportType === 'Run') {
-              return { ...c, currentKm: Math.min(c.targetKm, runKm) };
+              return { ...c, currentKm: Math.max(c.currentKm, Math.min(c.targetKm, runKm)) };
             } else if (c.sportType === 'Ride') {
-              return { ...c, currentKm: Math.min(c.targetKm, rideKm) };
+              return { ...c, currentKm: Math.max(c.currentKm, Math.min(c.targetKm, rideKm)) };
             }
             return c;
           })
@@ -140,18 +168,20 @@ export default function GroupsScreen() {
     calculateMileage();
   }, []);
 
-  const toggleChallengeJoin = (id: string) => {
+  const toggleChallengeJoin = async (id: string) => {
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await ApiClient.toggleJoinChallenge(id).catch(() => {});
     } catch {}
     setChallenges((prev) =>
       prev.map((c) => (c.id === id ? { ...c, joined: !c.joined } : c))
     );
   };
 
-  const toggleClubJoin = (id: string) => {
+  const toggleClubJoin = async (id: string) => {
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await ApiClient.toggleJoinClub(id).catch(() => {});
     } catch {}
     setClubs((prev) =>
       prev.map((cl) => {
@@ -192,23 +222,37 @@ export default function GroupsScreen() {
               return (
                 <SurfaceCard key={challenge.id}>
                   <View style={styles.cardHeader}>
-                    <View style={[styles.badgeIconWrapper, { backgroundColor: colors.surfaceSecondary }]}>
-                      <Ionicons
-                        name={challenge.badgeIcon}
-                        size={22}
-                        color={isCompleted ? colors.accent : colors.textSecondary}
-                      />
-                    </View>
-                    <View style={styles.cardMeta}>
-                      <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                        {challenge.title}
-                      </Text>
-                      <Text style={[styles.cardSub, { color: colors.textSecondary }]}>
-                        {isCompleted
-                          ? 'Goal Completed'
-                          : `${challenge.daysRemaining} days remaining`}
-                      </Text>
-                    </View>
+                    <TouchableOpacity
+                      style={styles.cardTouchArea}
+                      onPress={() => router.push(`/challenges/${challenge.id}`)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[styles.badgeIconWrapper, { backgroundColor: colors.surfaceSecondary }]}>
+                        {challenge.title.toLowerCase().includes('fondo') || challenge.title.toLowerCase().includes('climb') ? (
+                          <Trophy
+                            size={22}
+                            color={isCompleted ? colors.accent : colors.textSecondary}
+                            weight="fill"
+                          />
+                        ) : (
+                          <Medal
+                            size={22}
+                            color={isCompleted ? colors.accent : colors.textSecondary}
+                            weight="fill"
+                          />
+                        )}
+                      </View>
+                      <View style={styles.cardMeta}>
+                        <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                          {challenge.title}
+                        </Text>
+                        <Text style={[styles.cardSub, { color: colors.textSecondary }]}>
+                          {isCompleted
+                            ? 'Goal Completed'
+                            : `${challenge.daysRemaining} days remaining`}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
 
                     <Button
                       title={challenge.joined ? 'Joined' : 'Join'}
@@ -252,20 +296,26 @@ export default function GroupsScreen() {
             {clubs.map((club) => (
               <SurfaceCard key={club.id}>
                 <View style={styles.cardHeader}>
-                  <View style={[styles.badgeIconWrapper, { backgroundColor: colors.surfaceSecondary }]}>
-                    <Ionicons name="shield-outline" size={22} color={colors.accent} />
-                  </View>
-                  <View style={styles.cardMeta}>
-                    <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                      {club.name}
-                    </Text>
-                    <Text style={[styles.cardSub, { color: colors.textSecondary }]}>
-                      {club.sportType} • {club.memberCount} members
-                    </Text>
-                    <Text style={[styles.locationText, { color: colors.textMuted }]}>
-                      {club.location}
-                    </Text>
-                  </View>
+                  <TouchableOpacity
+                    style={styles.cardTouchArea}
+                    onPress={() => router.push(`/clubs/${club.id}`)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.badgeIconWrapper, { backgroundColor: colors.surfaceSecondary }]}>
+                      <ShieldCheck size={22} color={colors.accent} weight="bold" />
+                    </View>
+                    <View style={styles.cardMeta}>
+                      <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                        {club.name}
+                      </Text>
+                      <Text style={[styles.cardSub, { color: colors.textSecondary }]}>
+                        {club.sportType} • {club.memberCount} members
+                      </Text>
+                      <Text style={[styles.locationText, { color: colors.textMuted }]}>
+                        {club.location}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
 
                   <Button
                     title={club.isMember ? 'Joined' : 'Join'}
@@ -296,6 +346,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing.md,
+  },
+  cardTouchArea: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: spacing.sm,
   },
   badgeIconWrapper: {
     width: 40,

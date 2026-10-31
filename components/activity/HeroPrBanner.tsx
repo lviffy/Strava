@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Trophy } from 'phosphor-react-native';
 import { useColorScheme } from '../useColorScheme';
 import theme, { radii, spacing, typography, borders } from '../../constants/theme';
 
@@ -18,7 +18,7 @@ export function HeroPrBanner({ benchmarkName = '10K', customMessage }: HeroPrBan
   return (
     <View style={[styles.container, { backgroundColor: colors.surfaceSecondary, borderColor: colors.border }]}>
       <View style={styles.trophyIconBox}>
-        <Ionicons name="trophy" size={18} color="#F59E0B" />
+        <Trophy size={18} color="#F59E0B" weight="bold" />
         <Text style={styles.prSubText}>PR</Text>
       </View>
       <Text style={[styles.headlineText, { color: colors.textPrimary }]}>

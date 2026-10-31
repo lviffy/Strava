@@ -1,12 +1,13 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Compass } from 'phosphor-react-native';
 import { useColorScheme } from '../useColorScheme';
 import theme, { spacing, typography } from '../../constants/theme';
 import { Button } from './Button';
 
 interface EmptyStateProps {
-  iconName?: keyof typeof Ionicons.glyphMap;
+  iconName?: string;
+  icon?: React.ReactNode;
   title: string;
   description: string;
   actionTitle?: string;
@@ -14,7 +15,8 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({
-  iconName = 'trail-sign-outline',
+  iconName,
+  icon,
   title,
   description,
   actionTitle,
@@ -26,7 +28,11 @@ export function EmptyState({
   return (
     <View style={styles.container}>
       <View style={[styles.iconContainer, { backgroundColor: colors.surfaceSecondary }]}>
-        <Ionicons name={iconName} size={32} color={colors.textSecondary} />
+        {icon ? (
+          icon
+        ) : (
+          <Compass size={32} color={colors.textSecondary} weight="regular" />
+        )}
       </View>
       <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
       <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>

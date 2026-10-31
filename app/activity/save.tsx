@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import MapView, { Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import { Ionicons } from '@expo/vector-icons';
+import { Bicycle, Footprints, CheckCircle } from 'phosphor-react-native';
 import { useRecordingStore, SportType } from '../../store/useRecordingStore';
 import { ActivityDao } from '../../database/ActivityDao';
 import { GearDao, GearItem } from '../../database/GearDao';
@@ -273,12 +273,21 @@ export default function SaveActivityScreen() {
                   onPress={() => setSelectedGearId(gear.id)}
                   activeOpacity={0.8}
                 >
-                  <Ionicons
-                    name={gear.type === 'Bike' ? 'bicycle-outline' : 'footsteps-outline'}
-                    size={16}
-                    color={isSelected ? '#FFFFFF' : colors.textPrimary}
-                    style={{ marginRight: 6 }}
-                  />
+                  {gear.type === 'Bike' ? (
+                    <Bicycle
+                      size={16}
+                      color={isSelected ? '#FFFFFF' : colors.textPrimary}
+                      weight="bold"
+                      style={{ marginRight: 6 }}
+                    />
+                  ) : (
+                    <Footprints
+                      size={16}
+                      color={isSelected ? '#FFFFFF' : colors.textPrimary}
+                      weight="bold"
+                      style={{ marginRight: 6 }}
+                    />
+                  )}
                   <Text
                     style={[
                       styles.gearName,
@@ -329,7 +338,7 @@ export default function SaveActivityScreen() {
             variant="primary"
             onPress={handleSave}
             isLoading={isSaving}
-            icon={<Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />}
+            icon={<CheckCircle size={20} color="#FFFFFF" weight="bold" />}
           />
         </View>
       </ScrollView>
