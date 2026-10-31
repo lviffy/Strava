@@ -202,4 +202,22 @@ export class ActivityDao {
     const db = await getDatabase();
     await db.runAsync(`DELETE FROM activities WHERE id = ?;`, [id]);
   }
+
+  static async getPendingActivities(): Promise<LocalActivity[]> {
+    const db = await getDatabase();
+    const results = await db.getAllAsync<LocalActivity>(
+      `SELECT * FROM activities WHERE sync_status = 'PENDING' ORDER BY start_timestamp ASC;`
+    );
+    return results;
+  }
+
+  static async markActivitySynced(id: string): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync(`UPDATE activities SET sync_status = 'SYNCED' WHERE id = ?;`, [id]);
+  }
+
+  static async markActivityFailed(id: string): Promise<void> {
+    const db = await getDatabase();
+    await db.runAsync(`UPDATE activities SET sync_status = 'FAILED' WHERE id = ?;`, [id]);
+  }
 }

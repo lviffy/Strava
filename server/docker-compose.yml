@@ -1,0 +1,22 @@
+services:
+  postgis:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: strava_postgis
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: strava_db
+      POSTGRES_USER: strava
+      POSTGRES_PASSWORD: strava_dev_password
+    volumes:
+      - strava_postgis_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U strava -d strava_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  strava_postgis_data:
+    driver: local
